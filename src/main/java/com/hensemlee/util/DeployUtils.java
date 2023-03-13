@@ -42,4 +42,8 @@ public class DeployUtils {
 				.filter(sequence -> Objects.nonNull(sequence) && sequence.length() > 0).map(String::trim)
 				.collect(Collectors.toList());
 	}
+
+	public static List<String> getAllProjects() {
+		return orderedDeploySequence;
+	}
 }
