@@ -140,7 +140,7 @@ public class EasyMavenDeployTool {
 					System.out.println("\u001B[31m>>>>>>> " + request.getPomFile() + " deploy failure !\u001B[0m");
 					deployFailureProjects.add(request.getPomFile().toString());
 				} else {
-					System.out.println("\u001B[32m>>>>>>> " + request.getPomFile() + " deploy success !\u001B[0m");
+					System.out.println("\u001B[32m>>>>>>> " + request.getPomFile() + " deploy successfully !\u001B[0m");
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -149,7 +149,7 @@ public class EasyMavenDeployTool {
 		});
 		System.out.println("\u001B[32m>>>>>>> deploy情况如下: >>>>>>>\u001B[0m");
 		if (deployFailureProjects.isEmpty()) {
-			System.out.println("\u001B[32m>>>>>>> all projects deploy success >>>>>>>\u001B[0m");
+			System.out.println("\u001B[32m>>>>>>> all projects deploy successfully >>>>>>>\u001B[0m");
 		} else {
 			deployFailureProjects.forEach(deploy -> System.out.println("\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
 		}
