@@ -43,7 +43,7 @@ public class DeployUtils {
 				.collect(Collectors.toList());
 	}
 
-	public static List<String> getAllProjects() {
+	public static List<String> getAllNeedDeployedProjects() {
 		return orderedDeploySequence;
 	}
 }
