@@ -1,8 +1,10 @@
 package com.hensemlee.util;
 
+import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_API_KEY;
+import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
+
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +21,10 @@ public class DeployUtils {
 
 	private static List<String> orderedDeploySequence;
 
+	private static Config config;
+
 	static {
+		config = getConfig();
 		orderedDeploySequence = getSequences();
 	}
 
@@ -33,7 +38,6 @@ public class DeployUtils {
 
 	private static List<String> getSequences() {
 		// 后面可能会新增项目需要deploy的项目, 所以会从apollo读取deploy的顺序
-		Config config = ConfigService.getAppConfig();
 		String deploySequenceStr = config.getProperty("deploy-sequence", "");
 		if (Objects.isNull(deploySequenceStr) || deploySequenceStr.length() <= 0) {
 			throw new NullPointerException("未找到设定的部署顺序!");
@@ -45,5 +49,17 @@ public class DeployUtils {
 
 	public static List<String> getAllNeedDeployedProjects() {
 		return orderedDeploySequence;
+	}
+
+	public static String getJfrogArtifactoryApiKey() {
+		return config.getProperty(JFROG_ARTIFACTORY_API_KEY, "");
+	}
+
+	public static String getJfrogArtifactoryURL() {
+		return config.getProperty(JFROG_ARTIFACTORY_QUERY_URL, "");
+	}
+
+	private static Config getConfig() {
+		return ConfigService.getAppConfig();
 	}
 }
