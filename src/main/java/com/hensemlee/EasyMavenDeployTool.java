@@ -11,6 +11,7 @@ import com.hensemlee.bean.req.EffectiveMavenReq;
 import com.hensemlee.exception.EasyDeployException;
 import com.hensemlee.util.ArtifactQueryUtils;
 import com.hensemlee.util.DeployUtils;
+import com.hensemlee.util.GitUtils;
 import com.hensemlee.util.POMUtils;
 import java.io.File;
 import java.io.IOException;
@@ -35,7 +36,6 @@ import org.apache.maven.shared.invoker.InvocationRequest;
 import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.io.SAXReader;
@@ -57,7 +57,15 @@ public class EasyMavenDeployTool {
     private static final int MINOR_VERSION_THRESHOLD = 30;
     private static final int PATCH_VERSION_THRESHOLD = 60;
 
-    public static void main(String[] args) throws XmlPullParserException, IOException {
+    private static Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
+    private static Map<String, String> artifactIdByAbsolutePath = new HashMap<>(64);
+
+    static {
+        fillMaps();
+    }
+
+    public static void main(String[] args)
+        throws IOException, InterruptedException {
         // 从命令行参数获取要deploy的项目
         if (args.length == 0) {
             System.out.println(
@@ -75,7 +83,7 @@ public class EasyMavenDeployTool {
             System.out.println(
                 "\u001B[31mUsage: easy-deploy launch \u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库，准备部署上线)\u001B[0m");
+                "\u001B[31mUsage: (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库、提交代码，准备部署上线)\u001B[0m");
             System.exit(1);
         }
         List<String> projects = Arrays.stream(args).filter(StringUtils::isNotBlank).collect(Collectors.toList());
@@ -114,8 +122,10 @@ public class EasyMavenDeployTool {
                 throw new EasyDeployException("查询Parent最新版本失败");
             }
             List<String> candidatePomFiles = Lists.newArrayList();
+            List<String> commitPomFiles = Lists.newArrayList();
             String finalNewVersion;
             candidatePomFiles.add(parentPOM);
+            commitPomFiles.add(parentPOM);
             System.out.println("\u001B[32m>>>>>>> start to update parent pom release version !\u001B[0m");
             try {
                 finalNewVersion = generateFinalNewVersion(splits);
@@ -127,13 +137,23 @@ public class EasyMavenDeployTool {
             System.out.println("\u001B[32m>>>>>>> start to update other pom release version  !\u001B[0m");
             absolutePathByArtifactId.values().forEach(pom -> {
                 try {
-                    POMUtils.updatePomVersion(pom, oldVersion, finalNewVersion, candidatePomFiles);
+                    boolean flag = POMUtils.updatePomVersion(pom, oldVersion, finalNewVersion);
+                    if (flag) {
+                        commitPomFiles.add(pom);
+                        if (artifactIdByAbsolutePath.containsKey(pom)) {
+                            System.out.println("\u001B[32m>>>>>>> update " + artifactIdByAbsolutePath.get(pom) + " release version successfully !\u001B[0m");
+                            candidatePomFiles.add(pom);
+                        }
+                    }
                 } catch (Exception e) {
                     throw new EasyDeployException("更新业务子工程POM失败");
                 }
             });
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
             deployFile(candidatePomFiles);
+            System.out.println("\u001B[32m、>>>>>>> start to commit and push \u001B[0m");
+            GitUtils.commitAndPushCode(System.getenv("TARGET_PROJECT_FOLDER"), commitPomFiles, finalNewVersion);
+            System.exit(1);
         }
 
         // 模糊匹配项目
@@ -367,5 +387,20 @@ public class EasyMavenDeployTool {
             .updated("2023-01-01")
             .exact(false)
             .build();
+    }
+
+    private static void fillMaps() {
+        File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
+        Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
+        while (iterator.hasNext()) {
+            File file = iterator.next();
+            if (file.isFile() && file.getName().equals("pom.xml")) {
+                String parentName = file.getParentFile().getName();
+                if (DeployUtils.contains(parentName)) {
+                    absolutePathByArtifactId.put(parentName, file.getAbsolutePath());
+                    artifactIdByAbsolutePath.put(file.getAbsolutePath(), parentName);
+                }
+            }
+        }
     }
 }
