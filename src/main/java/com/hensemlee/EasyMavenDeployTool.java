@@ -153,6 +153,7 @@ public class EasyMavenDeployTool {
             deployFile(candidatePomFiles);
             System.out.println("\u001B[32m、>>>>>>> start to commit and push \u001B[0m");
             GitUtils.commitAndPushCode(System.getenv("TARGET_PROJECT_FOLDER"), commitPomFiles, finalNewVersion);
+            System.out.println("\u001B[32m、>>>>>>> commit and push success \u001B[0m");
             System.exit(1);
         }
 
