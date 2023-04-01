@@ -1,10 +1,13 @@
 package com.hensemlee.util;
 
+import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
+
 import com.hensemlee.exception.EasyDeployException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
@@ -83,6 +86,29 @@ public class POMUtils {
         return false;
     }
 
+    public static boolean checkCandidatePom(String pom, String candidateVersion) {
+        File pomFile = new File(pom);
+        SAXReader reader = new SAXReader();
+        Document document;
+        try {
+            document = reader.read(pomFile);
+        } catch (DocumentException e) {
+            throw new EasyDeployException("Error reading pom.xml: " + e.getMessage());
+        }
+        Element parent = document.getRootElement().element("parent");
+        if (Objects.isNull(parent)) {
+            return false;
+        }
+        Element version = parent.element("version");
+        if (Objects.isNull(version)) {
+            return false;
+        }
+        if (candidateVersion.equals(version.getText())) {
+            return true;
+        }
+        return false;
+    }
+
     private static void writeDocument(Document document, File pomFile) throws IOException {
         FileWriter fileWriter = null;
         try {
@@ -93,5 +119,22 @@ public class POMUtils {
                 fileWriter.close();
             }
         }
+    }
+
+    public static Document getParentDocument() {
+        Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+        String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
+        File pomFile = new File(parentPOM);
+        SAXReader reader = new SAXReader();
+        Document document;
+        try {
+            document = reader.read(pomFile);
+        } catch (DocumentException e) {
+            throw new EasyDeployException("Error reading pom.xml: " + e.getMessage());
+        }
+        if (Objects.isNull(document)) {
+            throw new EasyDeployException("parent pom.xml not found");
+        }
+        return document;
     }
 }

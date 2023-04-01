@@ -11,6 +11,7 @@ public class Constants {
     public static final String PARENT_PROJECT_NAME = "intelligence-parent";
 
     public static final String RELEASE_PATTERN = "^\\d+\\.\\d+\\.\\d+\\.RELEASE$";
+    public static final String SNAPSHOT_SUFFIX = "-SNAPSHOT";
 
     public static final String PATH_DELIMITER = "/";
     public static final String JFROG_ARTIFACTORY_API_KEY = "JFROG_ARTIFACTORY_API_KEY";

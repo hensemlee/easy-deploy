@@ -5,8 +5,13 @@ import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
 
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
+import com.google.common.io.Files;
+import java.io.File;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -61,5 +66,19 @@ public class DeployUtils {
 
 	private static Config getConfig() {
 		return ConfigService.getAppConfig();
+	}
+
+	public static Map<String, String> findAllMavenProjects() {
+		Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
+		File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
+		Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
+		while (iterator.hasNext()) {
+			File file = iterator.next();
+			if (file.isFile() && file.getName().equals("pom.xml")) {
+				String parentName = file.getParentFile().getName();
+				absolutePathByArtifactId.put(parentName, file.getAbsolutePath());
+			}
+		}
+		return absolutePathByArtifactId;
 	}
 }

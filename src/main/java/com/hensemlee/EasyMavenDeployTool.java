@@ -2,9 +2,11 @@ package com.hensemlee;
 
 import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
 import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
+import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
 
 import cn.hutool.core.collection.CollUtil;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.hensemlee.bean.SortHelper;
 import com.hensemlee.bean.req.EffectiveMavenReq;
@@ -37,8 +39,6 @@ import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.io.SAXReader;
 
 /**
  * @author hensemlee
@@ -50,6 +50,8 @@ public class EasyMavenDeployTool {
     private static final String FIX_FLAG = "FIX";
 
     private static final String LAUNCH_FLAG = "LAUNCH";
+
+    private static final String DEV_FLAG = "DEV";
 
     private static int INCREMENT = 1;
 
@@ -94,16 +96,8 @@ public class EasyMavenDeployTool {
         }
 
         if (projects.size() == 1 && LAUNCH_FLAG.equalsIgnoreCase(projects.get(0))) {
-            Map<String, String> absolutePathByArtifactId = findAllMavenProjects();
+            Document document = POMUtils.getParentDocument();
             String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
-            File pomFile = new File(parentPOM);
-            SAXReader reader = new SAXReader();
-            Document document;
-            try {
-                document = reader.read(pomFile);
-            } catch (DocumentException e) {
-                throw new EasyDeployException("Error reading pom.xml: " + e.getMessage());
-            }
             String oldVersion = document.getRootElement().element("version").getText();
             String artifactId = document.getRootElement().element("artifactId").getText();
             if (Pattern.matches(RELEASE_PATTERN, oldVersion)) {
@@ -121,8 +115,8 @@ public class EasyMavenDeployTool {
             if (CollUtil.isEmpty(splits)) {
                 throw new EasyDeployException("查询Parent最新版本失败");
             }
-            List<String> candidatePomFiles = Lists.newArrayList();
-            List<String> commitPomFiles = Lists.newArrayList();
+            Set<String> candidatePomFiles =  Sets.newHashSet();
+            Set<String> commitPomFiles = Sets.newHashSet();
             String finalNewVersion;
             candidatePomFiles.add(parentPOM);
             commitPomFiles.add(parentPOM);
@@ -150,10 +144,41 @@ public class EasyMavenDeployTool {
                 }
             });
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
-            deployFile(candidatePomFiles);
-            System.out.println("\u001B[32m、>>>>>>> start to commit and push \u001B[0m");
-            GitUtils.commitAndPushCode(System.getenv("TARGET_PROJECT_FOLDER"), commitPomFiles, finalNewVersion);
-            System.out.println("\u001B[32m、>>>>>>> commit and push success \u001B[0m");
+            deployFile(new ArrayList<>(candidatePomFiles));
+            System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
+            GitUtils.commitAndPushCode(System.getenv("TARGET_PROJECT_FOLDER"), new ArrayList<>(commitPomFiles), finalNewVersion);
+            System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
+            System.exit(1);
+        }
+
+        if (projects.size() == 1 && DEV_FLAG.equalsIgnoreCase(projects.get(0))) {
+            Document parentDocument = POMUtils.getParentDocument();
+            String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
+            String oldVersion = parentDocument.getRootElement().element("version").getText();
+            if (!oldVersion.endsWith(SNAPSHOT_SUFFIX)) {
+                System.out.println("\u001B[31m>>>>>>> 当前Parent非SNAPSHOT版本，是否继续？\u001B[0m");
+                Scanner scanner = new Scanner(System.in);
+                System.out.print("\u001B[31m请输入 'y' 继续执行，或者输入其他字符结束执行：\u001B[0m");
+                String input = scanner.next();
+                if (!input.equalsIgnoreCase("y")) {
+                    System.exit(1);
+                }
+            }
+            Set<String> candidatePomFiles = Sets.newHashSet();
+            candidatePomFiles.add(parentPOM);
+            absolutePathByArtifactId.values().forEach(pom -> {
+                try {
+                    boolean flag = POMUtils.checkCandidatePom(pom, oldVersion);
+                    if (flag) {
+                        if (artifactIdByAbsolutePath.containsKey(pom)) {
+                            candidatePomFiles.add(pom);
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new EasyDeployException("查询业务子工程POM失败");
+                }
+            });
+            deployFile(new ArrayList<>(candidatePomFiles));
             System.exit(1);
         }
 
@@ -173,7 +198,7 @@ public class EasyMavenDeployTool {
 
         if (!CollUtil.isEmpty(projects) && FIX_FLAG.equalsIgnoreCase(projects.get(0))) {
             projects = projects.subList(1, projects.size());
-            Map<String, String> absolutePathByArtifactId = findAllMavenProjects();
+            Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
             Set<String> candidateProjects = new HashSet<>();
             List<String> allNeedDeployedProjects = DeployUtils.getAllNeedDeployedProjects();
             Map<String, Set<String>> prompt = new HashMap<>();
@@ -296,20 +321,6 @@ public class EasyMavenDeployTool {
                 if (DeployUtils.contains(parentName)) {
                     absolutePathByArtifactId.put(parentName, file.getAbsolutePath());
                 }
-            }
-        }
-        return absolutePathByArtifactId;
-    }
-
-    private static Map<String, String> findAllMavenProjects() {
-        Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-        File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
-        Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
-        while (iterator.hasNext()) {
-            File file = iterator.next();
-            if (file.isFile() && file.getName().equals("pom.xml")) {
-                String parentName = file.getParentFile().getName();
-                absolutePathByArtifactId.put(parentName, file.getAbsolutePath());
             }
         }
         return absolutePathByArtifactId;
