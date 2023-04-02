@@ -1,13 +1,26 @@
 package com.hensemlee;
 
+import static com.hensemlee.contants.Constants.ALL_DEPLOY_FLAG;
+import static com.hensemlee.contants.Constants.CHAT_FLAG;
+import static com.hensemlee.contants.Constants.DEV_FLAG;
+import static com.hensemlee.contants.Constants.FIX_FLAG;
+import static com.hensemlee.contants.Constants.INCREMENT;
+import static com.hensemlee.contants.Constants.LAUNCH_FLAG;
+import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.OPEN_API_HOST;
+import static com.hensemlee.contants.Constants.OPEN_API_KEY;
 import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
+import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
 import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
 import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
+import com.hensemlee.bean.FixedSizeQueue;
 import com.hensemlee.bean.SortHelper;
 import com.hensemlee.bean.req.EffectiveMavenReq;
 import com.hensemlee.exception.EasyDeployException;
@@ -15,6 +28,10 @@ import com.hensemlee.util.ArtifactQueryUtils;
 import com.hensemlee.util.DeployUtils;
 import com.hensemlee.util.GitUtils;
 import com.hensemlee.util.POMUtils;
+import com.plexpt.chatgpt.ChatGPTStream;
+import com.plexpt.chatgpt.entity.chat.ChatCompletion;
+import com.plexpt.chatgpt.entity.chat.Message;
+import com.plexpt.chatgpt.listener.ConsoleStreamListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +46,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.LongAccumulator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -45,22 +64,13 @@ import org.dom4j.Document;
  * @create 2023/3/4 13:33
  */
 public class EasyMavenDeployTool {
-
-    private static final String ALL_DEPLOY_FLAG = "ALL";
-    private static final String FIX_FLAG = "FIX";
-
-    private static final String LAUNCH_FLAG = "LAUNCH";
-
-    private static final String DEV_FLAG = "DEV";
-
-    private static int INCREMENT = 1;
-
-    private static final int MAJOR_VERSION_THRESHOLD = 10;
-    private static final int MINOR_VERSION_THRESHOLD = 30;
-    private static final int PATCH_VERSION_THRESHOLD = 60;
-
     private static Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
     private static Map<String, String> artifactIdByAbsolutePath = new HashMap<>(64);
+
+    private static LongAccumulator accumulator = new LongAccumulator(Long::sum, 0L);
+
+    private static FixedSizeQueue<String> prompts = new FixedSizeQueue<>(3);
+    private static FixedSizeQueue<String> assistants = new FixedSizeQueue<>(3);
 
     static {
         fillMaps();
@@ -182,6 +192,57 @@ public class EasyMavenDeployTool {
             System.exit(1);
         }
 
+        if (projects.size() > 0 && CHAT_FLAG.equalsIgnoreCase(projects.get(0))) {
+
+            projects.remove(0);
+            String prompt = String.join(" ", projects);
+            Message assistant = new Message("assistant",  "");
+            String openApiKey = System.getenv(OPEN_API_KEY);
+            if (StrUtil.isBlank(prompt)) {
+                System.out.println("\u001B[31m>>>>>>> 输入的prompt为空，请重试 \u001B[0m");
+                System.exit(1);
+            }
+            if (StrUtil.isBlank(openApiKey)) {
+                System.out.println("\u001B[31m>>>>>>> 环境变量 " + OPEN_API_KEY + " 为空，请设置后再继续 \u001B[0m");
+                System.exit(1);
+            }
+            while (true) {
+                if (accumulator.get() > 0L) {
+                    Thread.sleep(100);
+                    System.out.println("\n");
+                    System.out.println("\u001B[32m>>>>>>> 请输入prompt继续聊天，按 control + c 退出聊天 \u001B[0m");
+                    Scanner scanner = new Scanner(System.in);
+                    prompt = scanner.next();
+                }
+                CountDownLatch countDownLatch = new CountDownLatch(1);
+                prompts.add(prompt);
+                assistants.add(assistant.getContent());
+                ConsoleStreamListener listener = new ConsoleStreamListener();
+                listener.setOnComplate(onComplete -> countDownLatch.countDown());
+                ChatGPTStream chatGPTStream = ChatGPTStream.builder()
+                    .apiKey(openApiKey)
+                    .timeout(900)
+                    .apiHost(OPEN_API_HOST)
+                    .build()
+                    .init();
+                ChatCompletion chatCompletion = ChatCompletion.builder()
+                    .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
+                    .messages(buildMessages(prompts, assistants))
+                    .maxTokens(3000)
+                    .temperature(0.9)
+                    .build();
+                chatGPTStream.streamChatCompletion(chatCompletion, listener);
+                try {
+                    countDownLatch.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                String content =  String.join("",  listener.getMessages());
+                assistant  = new Message("assistant", content);
+                accumulator.accumulate(1L);
+            }
+        }
+
         // 模糊匹配项目
         if (projects.size() > 1 && ALL_DEPLOY_FLAG.equalsIgnoreCase(projects.get(0))) {
             projects = DeployUtils.getAllNeedDeployedProjects().stream()
@@ -240,6 +301,23 @@ public class EasyMavenDeployTool {
             });
             System.exit(1);
         }
+    }
+
+    private static List<Message> buildMessages(FixedSizeQueue<String> prompts,
+        FixedSizeQueue<String> assistants) {
+        List<Message> messages = new ArrayList<>();
+        prompts.getList().forEach(prompt -> {
+            Message message = new Message("user", prompt);
+            messages.add(message);
+        });
+        assistants.getList().forEach(assistant -> {
+            if (StrUtil.isBlank(assistant)) {
+                return;
+            }
+            Message message = new Message("assistant", assistant);
+            messages.add(message);
+        });
+        return messages;
     }
 
     private static Invoker getInvoker() {
@@ -373,23 +451,28 @@ public class EasyMavenDeployTool {
         String finalNewVersion;
         int patchVersion = Integer.parseInt(splits.get(splits.size() - 2));
         int newPatchVersion = patchVersion + INCREMENT;
-        if (patchVersion > PATCH_VERSION_THRESHOLD) {
+        if (newPatchVersion > PATCH_VERSION_THRESHOLD) {
             int minorVersion = Integer.parseInt(splits.get(splits.size() - 3));
             int newMinorVersion = minorVersion + INCREMENT;
             if (newMinorVersion > MINOR_VERSION_THRESHOLD) {
                 int majorVersion = Integer.parseInt(splits.get(splits.size() - 4));
                 int newMajorVersion = majorVersion + INCREMENT;
                 if (newMajorVersion > MAJOR_VERSION_THRESHOLD) {
-                    throw new EasyDeployException("版本号超过设定的阈值");
+                    throw new EasyDeployException("主版本号超过设定的阈值");
+                } else {
+                    splits.set(splits.size() - 4, String.valueOf(newMajorVersion));
                 }
-                splits.set(splits.size() - 4, String.valueOf(newMajorVersion));
+            } else {
+                splits.set(splits.size() - 3, String.valueOf(newMinorVersion));
             }
-            splits.set(splits.size() - 3, String.valueOf(newMinorVersion));
+        } else {
+            splits.set(splits.size() - 2, String.valueOf(newPatchVersion));
         }
-        splits.set(splits.size() - 2, String.valueOf(newPatchVersion));
         finalNewVersion = String.join(".", splits);
         return finalNewVersion;
     }
+
+
 
     private static EffectiveMavenReq buildReq(String artifactId) {
         return EffectiveMavenReq.builder()
