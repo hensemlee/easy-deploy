@@ -37,6 +37,9 @@ public class Constants {
     public static final int MINOR_VERSION_THRESHOLD = 60;
     public static final int PATCH_VERSION_THRESHOLD = 90;
 
-    public static final String OPEN_API_KEY = "OPEN_API_KEY";
-    public static final String OPEN_API_HOST = "https://closeai.deno.dev/";
+    public static final String OPENAI_API_KEY = "OPENAI_API_KEY";
+
+    public static final String OPENAI_API_HOST_DEFAULT_VALUE = "https://closeai.deno.dev/";
+
+    public static final String OPENAI_API_HOST = "OPENAI_API_HOST";
 }

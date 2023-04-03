@@ -2,6 +2,7 @@ package com.plexpt.chatgpt.listener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -18,6 +19,10 @@ public class ConsoleStreamListener extends AbstractStreamListener {
     public List<String> getMessages() {
         return messages;
     }
+
+    public void clearMessages() {
+        messages.clear();
+    }
     @Override
     public void onMsg(String message) {
         messages.add(message);
@@ -27,5 +32,15 @@ public class ConsoleStreamListener extends AbstractStreamListener {
     @Override
     public void onError(Throwable throwable, String response) {
 
+    }
+
+    @Override
+    public void setOnComplate(Consumer<String> onComplate) {
+        super.setOnComplate(onComplate);
+    }
+
+    @Override
+    public Consumer<String> getOnComplate() {
+        return super.getOnComplate();
     }
 }
