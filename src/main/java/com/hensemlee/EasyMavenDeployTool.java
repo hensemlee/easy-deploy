@@ -18,7 +18,6 @@ import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
@@ -34,11 +33,12 @@ import com.plexpt.chatgpt.ChatGPTStream;
 import com.plexpt.chatgpt.entity.chat.ChatCompletion;
 import com.plexpt.chatgpt.entity.chat.Message;
 import com.plexpt.chatgpt.listener.ConsoleStreamListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,12 +53,6 @@ import java.util.concurrent.atomic.LongAccumulator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.shared.invoker.DefaultInvocationRequest;
-import org.apache.maven.shared.invoker.DefaultInvoker;
-import org.apache.maven.shared.invoker.InvocationRequest;
-import org.apache.maven.shared.invoker.InvocationResult;
-import org.apache.maven.shared.invoker.Invoker;
-import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.dom4j.Document;
 
 /**
@@ -251,7 +245,7 @@ public class EasyMavenDeployTool {
         }
 
         // 模糊匹配项目
-        if (projects.size() > 1 && ALL_DEPLOY_FLAG.equalsIgnoreCase(projects.get(0))) {
+        if (projects.size() == 1 && ALL_DEPLOY_FLAG.equalsIgnoreCase(projects.get(0))) {
             projects = DeployUtils.getAllNeedDeployedProjects().stream()
                 .map(project -> "[" + project + "]").collect(Collectors.toList());
         }
@@ -289,20 +283,56 @@ public class EasyMavenDeployTool {
             });
             promotion(prompt);
 
-            Invoker invoker = getInvoker();
-
+//            Invoker invoker = getInvoker();
+//
+//            candidateProjects.forEach(candidate -> {
+//                InvocationRequest request = new DefaultInvocationRequest();
+//                request.setPomFile(new File(absolutePathByArtifactId.get(candidate)));
+//                request.setGoals(Collections.singletonList("idea:idea"));
+//                try {
+//                    System.out.println("\u001B[32m>>>>>>> start to fix dependency " + candidate
+//                        + " >>>>>>> \u001B[0m");
+//                    invoker.execute(request);
+//                    System.out.println("\u001B[32m>>>>>>> " + request.getPomFile()
+//                        + " dependency fix successfully ! >>>>>>> \u001B[0m");
+//                } catch (MavenInvocationException e) {
+//                    System.out.println("\u001B[31m>>>>>>> " + request.getPomFile()
+//                        + " dependency fix failure ! >>>>>>> \u001B[0m");
+//                }
+//            });
             candidateProjects.forEach(candidate -> {
-                InvocationRequest request = new DefaultInvocationRequest();
-                request.setPomFile(new File(absolutePathByArtifactId.get(candidate)));
-                request.setGoals(Collections.singletonList("idea:idea"));
+                ProcessBuilder processBuilder = new ProcessBuilder("mvn", "idea:idea");
+                String path = absolutePathByArtifactId.get(candidate);
+                int index = path.lastIndexOf("/pom.xml");
+                processBuilder.directory(new File(path.substring(0, index)));
+                int exitCode;
                 try {
-                    System.out.println("\u001B[32m>>>>>>> start to fix dependency " + candidate
-                        + " >>>>>>> \u001B[0m");
-                    invoker.execute(request);
-                    System.out.println("\u001B[32m>>>>>>> " + request.getPomFile()
+                    // 启动进程并等待完成
+                    Process process = processBuilder.start();
+                    exitCode = process.waitFor();
+                    if (exitCode == 0) {
+                        new BufferedReader(new InputStreamReader(process.getInputStream()));
+                        BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(process.getInputStream()));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            System.out.println("\u001B[37m" + line + " \u001B[0m");
+                        }
+                        System.out.println("\u001B[32m>>>>>>> " + candidate
                         + " dependency fix successfully ! >>>>>>> \u001B[0m");
-                } catch (MavenInvocationException e) {
-                    System.out.println("\u001B[31m>>>>>>> " + request.getPomFile()
+                    } else {
+                        System.err.println(
+                            "\u001B[31m mvn command failed with exit code " + exitCode + "!\u001B[0m");
+                        BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                        String line;
+                        while ((line = errorReader.readLine()) != null) {
+                            System.err.println("\u001B[31m" +  line + " \u001B[0m");
+                        }
+                        System.out.println("\u001B[31m>>>>>>> " + candidate
+                        + " dependency fix failure ! >>>>>>> \u001B[0m");
+                    }
+                } catch (IOException | InterruptedException e) {
+                    System.out.println("\u001B[31m>>>>>>> " + candidate
                         + " dependency fix failure ! >>>>>>> \u001B[0m");
                 }
             });
@@ -325,13 +355,6 @@ public class EasyMavenDeployTool {
             messages.add(message);
         });
         return messages;
-    }
-
-    private static Invoker getInvoker() {
-        Invoker invoker = new DefaultInvoker();
-        invoker.setInputStream(System.in);
-        invoker.setMavenHome(new File(System.getenv("M2_HOME")));
-        return invoker;
     }
 
     /**
@@ -419,29 +442,38 @@ public class EasyMavenDeployTool {
         System.out.println("\u001B[32m>>>>>>> start to deploy " + candidatePomFiles.size()
             + " projects below sequencelly: >>>>>>>\u001B[0m");
         candidatePomFiles.forEach(System.out::println);
-        List<InvocationRequest> requests = candidatePomFiles.stream().map(pom -> {
-            InvocationRequest request = new DefaultInvocationRequest();
-            request.setPomFile(new File(pom));
-            request.setGoals(Arrays.asList("clean", "package", "install", "deploy"));
-            return request;
-        }).collect(Collectors.toList());
-        Invoker invoker = getInvoker();
-        List<String> deployFailureProjects = new ArrayList<>();
-        requests.forEach(request -> {
+        Set<String> deployFailureProjects = new HashSet<>();
+        candidatePomFiles.forEach(candidate -> {
+            ProcessBuilder processBuilder = new ProcessBuilder("mvn", "deploy");
+            int index = candidate.lastIndexOf("/pom.xml");
+            processBuilder.directory(new File(candidate.substring(0, index)));
+            int exitCode;
             try {
-                System.out.println(
-                    "\u001B[32m>>>>>>> start to deploy " + request.getPomFile() + " \u001B[0m");
-                InvocationResult result = invoker.execute(request);
-                if (result.getExitCode() != 0) {
-                    System.out.println(
-                        "\u001B[31m>>>>>>> " + request.getPomFile() + " deploy failure !\u001B[0m");
-                    deployFailureProjects.add(request.getPomFile().toString());
+                // 启动进程并等待完成
+                Process process = processBuilder.start();
+                exitCode = process.waitFor();
+                if (exitCode == 0) {
+                    new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(process.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println("\u001B[37m" + line + " \u001B[0m");
+                    }
                 } else {
-                    System.out.println("\u001B[32m>>>>>>> " + request.getPomFile()
-                        + " deploy successfully !\u001B[0m");
+                    System.err.println(
+                        "\u001B[31m mvn command failed with exit code " + exitCode + "!\u001B[0m");
+                    BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                    String line;
+                    while ((line = errorReader.readLine()) != null) {
+                        System.err.println("\u001B[31m" +  line + " \u001B[0m");
+                    }
+                    deployFailureProjects.add(candidate);
                 }
-            } catch (Exception e) {
-                deployFailureProjects.add(request.getPomFile().toString());
+            } catch (IOException | InterruptedException e) {
+                System.out.println(
+                    "\u001B[31m>>>>>>> " + candidate + " deploy failure !\u001B[0m");
+                deployFailureProjects.add(candidate);
             }
         });
         System.out.println("\u001B[32m>>>>>>> deploy情况如下: >>>>>>>\u001B[0m");
