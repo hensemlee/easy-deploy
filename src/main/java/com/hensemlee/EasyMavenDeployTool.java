@@ -237,7 +237,6 @@ public class EasyMavenDeployTool {
                     .apiHost(openaiApiHost)
                     .build()
                     .init();
-                System.out.println(JSON.toJSONString(messages.getList()));
                 ChatCompletion chatCompletion = ChatCompletion.builder()
                     .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
                     .messages(messages.getList())
