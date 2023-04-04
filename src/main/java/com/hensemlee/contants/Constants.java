@@ -25,7 +25,7 @@ public class Constants {
     public static final String ALL_DEPLOY_FLAG = "ALL";
     public static final String FIX_FLAG = "FIX";
 
-    public static final String LAUNCH_FLAG = "LAUNCH";
+    public static final String PRD_FLAG = "PRD";
 
     public static final String DEV_FLAG = "DEV";
 

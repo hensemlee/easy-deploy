@@ -3,6 +3,7 @@ package com.hensemlee.util;
 import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_API_KEY;
 import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
 
+import cn.hutool.core.util.StrUtil;
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
 import com.google.common.io.Files;
@@ -70,7 +71,13 @@ public class DeployUtils {
 
 	public static Map<String, String> findAllMavenProjects() {
 		Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-		File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
+		String targetProjectFolder = System.getenv("TARGET_PROJECT_FOLDER");
+		if (StrUtil.isBlank(targetProjectFolder)) {
+			System.err.println(
+				"\u001B[31m please set TARGET_PROJECT_FOLDER env viriable " + "!\u001B[0m");
+			System.exit(1);
+		}
+		File rootDir = new File(targetProjectFolder);
 		Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
 		while (iterator.hasNext()) {
 			File file = iterator.next();

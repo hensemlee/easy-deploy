@@ -5,7 +5,7 @@ import static com.hensemlee.contants.Constants.CHAT_FLAG;
 import static com.hensemlee.contants.Constants.DEV_FLAG;
 import static com.hensemlee.contants.Constants.FIX_FLAG;
 import static com.hensemlee.contants.Constants.INCREMENT;
-import static com.hensemlee.contants.Constants.LAUNCH_FLAG;
+import static com.hensemlee.contants.Constants.PRD_FLAG;
 import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
 import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
 import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
@@ -18,6 +18,7 @@ import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
@@ -65,8 +66,7 @@ public class EasyMavenDeployTool {
 
     private static LongAccumulator accumulator = new LongAccumulator(Long::sum, 0L);
 
-    private static FixedSizeQueue<String> prompts = new FixedSizeQueue<>(3);
-    private static FixedSizeQueue<String> assistants = new FixedSizeQueue<>(3);
+    private static FixedSizeQueue<Message> messages = new FixedSizeQueue<>(6);
 
     static {
         fillMaps();
@@ -89,9 +89,17 @@ public class EasyMavenDeployTool {
             System.out.println(
                 "\u001B[31m       (发布所有需要deploy的项目到远程maven仓库)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy launch \u001B[0m");
+                "\u001B[31mUsage: easy-deploy dev \u001B[0m");
+            System.out.println(
+                "\u001B[31m       (开发时，merge了origin/master或改了api-xxxx需要一键deploy的情况)\u001B[0m");
+            System.out.println(
+                "\u001B[31mUsage: easy-deploy prd \u001B[0m");
             System.out.println(
                 "\u001B[31m       (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库、提交代码，准备部署上线)\u001B[0m");
+            System.out.println(
+                "\u001B[31mUsage: easy-deploy chat xxxxxxx \u001B[0m");
+            System.out.println(
+                "\u001B[31m       (在IDE里开发时，随时可在命令行发起ChatGPT提问&聊天)\u001B[0m");
             System.exit(1);
         }
         List<String> projects = Arrays.stream(args).filter(StringUtils::isNotBlank).collect(Collectors.toList());
@@ -101,7 +109,7 @@ public class EasyMavenDeployTool {
             System.exit(1);
         }
 
-        if (projects.size() == 1 && LAUNCH_FLAG.equalsIgnoreCase(projects.get(0))) {
+        if (projects.size() == 1 && PRD_FLAG.equalsIgnoreCase(projects.get(0))) {
             Document document = POMUtils.getParentDocument();
             String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
             String oldVersion = document.getRootElement().element("version").getText();
@@ -193,16 +201,16 @@ public class EasyMavenDeployTool {
             projects.remove(0);
             String prompt = String.join(" ", projects);
             Message assistant = new Message("assistant",  "");
-            String openApiKey = System.getenv(OPENAI_API_KEY);
-            String openApiHost = System.getenv(OPENAI_API_HOST);
-            if (StrUtil.isBlank(openApiHost)) {
-                openApiHost = OPENAI_API_HOST_DEFAULT_VALUE;
+            String openaiApiKey = System.getenv(OPENAI_API_KEY);
+            String openaiApiHost = System.getenv(OPENAI_API_HOST);
+            if (StrUtil.isBlank(openaiApiHost)) {
+                openaiApiHost = OPENAI_API_HOST_DEFAULT_VALUE;
             }
             if (StrUtil.isBlank(prompt)) {
                 System.out.println("\u001B[31m>>>>>>> 输入的prompt为空，请重试 \u001B[0m");
                 System.exit(1);
             }
-            if (StrUtil.isBlank(openApiKey)) {
+            if (StrUtil.isBlank(openaiApiKey)) {
                 System.out.println("\u001B[31m>>>>>>> 环境变量 " + OPENAI_API_KEY + " 为空，请设置后再继续 \u001B[0m");
                 System.exit(1);
             }
@@ -212,22 +220,26 @@ public class EasyMavenDeployTool {
                     System.out.println("\n\n");
                     System.out.println("\u001B[32m>>>>>>> 请输入prompt继续聊天，按 control + c 退出聊天 \u001B[0m");
                     Scanner scanner = new Scanner(System.in);
-                    prompt = scanner.next();
+                    try {
+                        prompt = scanner.nextLine();
+                    } catch (Exception e) {
+                        // do nothing
+                    }
                 }
                 CountDownLatch countDownLatch = new CountDownLatch(1);
-                prompts.add(prompt);
-                assistants.add(assistant.getContent());
+                messages.add(Message.of(prompt));
                 ConsoleStreamListener listener = new ConsoleStreamListener();
                 listener.setOnComplate(onComplete -> countDownLatch.countDown());
                 ChatGPTStream chatGPTStream = ChatGPTStream.builder()
-                    .apiKey(openApiKey)
+                    .apiKey(openaiApiKey)
                     .timeout(900)
-                    .apiHost(openApiHost)
+                    .apiHost(openaiApiHost)
                     .build()
                     .init();
+                System.out.println(JSON.toJSONString(messages.getList()));
                 ChatCompletion chatCompletion = ChatCompletion.builder()
                     .model(ChatCompletion.Model.GPT_3_5_TURBO.getName())
-                    .messages(buildMessages(prompts, assistants))
+                    .messages(messages.getList())
                     .maxTokens(3000)
                     .temperature(0.9)
                     .build();
@@ -239,6 +251,9 @@ public class EasyMavenDeployTool {
                 }
                 String content =  String.join("",  listener.getMessages());
                 assistant  = new Message("assistant", content);
+                if (!StrUtil.isBlank(assistant.getContent())) {
+                    messages.add(assistant);
+                }
                 listener.clearMessages();
                 accumulator.accumulate(1L);
             }
