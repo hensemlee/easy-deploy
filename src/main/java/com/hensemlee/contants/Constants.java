@@ -20,7 +20,7 @@ public class Constants {
 
     public static final String GIT_CMD = "git";
 
-    public static final String DEFAULT_COMMIT_MSG = "\"upgrade to %s && launch\"";
+    public static final String DEFAULT_COMMIT_MSG = "\"upgrade to %s && release\"";
 
     public static final String ALL_DEPLOY_FLAG = "ALL";
     public static final String FIX_FLAG = "FIX";

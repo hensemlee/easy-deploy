@@ -5,7 +5,6 @@ import static com.hensemlee.contants.Constants.CHAT_FLAG;
 import static com.hensemlee.contants.Constants.DEV_FLAG;
 import static com.hensemlee.contants.Constants.FIX_FLAG;
 import static com.hensemlee.contants.Constants.INCREMENT;
-import static com.hensemlee.contants.Constants.PRD_FLAG;
 import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
 import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
 import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
@@ -13,6 +12,7 @@ import static com.hensemlee.contants.Constants.OPENAI_API_HOST_DEFAULT_VALUE;
 import static com.hensemlee.contants.Constants.OPENAI_API_KEY;
 import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
 import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.PRD_FLAG;
 import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
 import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
 
@@ -143,7 +143,8 @@ public class EasyMavenDeployTool {
             }
             System.out.println("\u001B[32m>>>>>>> update parent pom release version successfully !\u001B[0m");
             System.out.println("\u001B[32m>>>>>>> start to update other pom release version  !\u001B[0m");
-            absolutePathByArtifactId.values().forEach(pom -> {
+            Map<String, String> allAbsolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+            allAbsolutePathByArtifactId.values().forEach(pom -> {
                 try {
                     boolean flag = POMUtils.updatePomVersion(pom, oldVersion, finalNewVersion);
                     if (flag) {
@@ -499,7 +500,6 @@ public class EasyMavenDeployTool {
             deployFailureProjects.forEach(deploy -> System.out.println(
                 "\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
         }
-        System.exit(1);
     }
     private static String generateFinalNewVersion(List<String> splits) {
         String finalNewVersion;
