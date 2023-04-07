@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static com.hensemlee.contants.Constants.*;
+
 /**
  * @author hensemlee
  * @create 2023/3/5 21:34
@@ -71,7 +73,7 @@ public class DeployUtils {
 
 	public static Map<String, String> findAllMavenProjects() {
 		Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-		String targetProjectFolder = System.getenv("TARGET_PROJECT_FOLDER");
+		String targetProjectFolder = System.getenv(TARGET_PROJECT_FOLDER);
 		if (StrUtil.isBlank(targetProjectFolder)) {
 			System.err.println(
 				"\u001B[31m please set TARGET_PROJECT_FOLDER env viriable " + "!\u001B[0m");

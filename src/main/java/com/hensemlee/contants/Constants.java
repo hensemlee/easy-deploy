@@ -42,4 +42,6 @@ public class Constants {
     public static final String OPENAI_API_HOST_DEFAULT_VALUE = "https://closeai.deno.dev/";
 
     public static final String OPENAI_API_HOST = "OPENAI_API_HOST";
+
+    public static final String TARGET_PROJECT_FOLDER = "TARGET_PROJECT_FOLDER";
 }

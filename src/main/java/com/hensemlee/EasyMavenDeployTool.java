@@ -1,24 +1,7 @@
 package com.hensemlee;
 
-import static com.hensemlee.contants.Constants.ALL_DEPLOY_FLAG;
-import static com.hensemlee.contants.Constants.CHAT_FLAG;
-import static com.hensemlee.contants.Constants.DEV_FLAG;
-import static com.hensemlee.contants.Constants.FIX_FLAG;
-import static com.hensemlee.contants.Constants.INCREMENT;
-import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
-import static com.hensemlee.contants.Constants.OPENAI_API_HOST_DEFAULT_VALUE;
-import static com.hensemlee.contants.Constants.OPENAI_API_KEY;
-import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
-import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.PRD_FLAG;
-import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
-import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
-
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
@@ -34,27 +17,20 @@ import com.plexpt.chatgpt.ChatGPTStream;
 import com.plexpt.chatgpt.entity.chat.ChatCompletion;
 import com.plexpt.chatgpt.entity.chat.Message;
 import com.plexpt.chatgpt.listener.ConsoleStreamListener;
+import org.apache.commons.lang3.StringUtils;
+import org.dom4j.Document;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
-import org.dom4j.Document;
+
+import static com.hensemlee.contants.Constants.*;
 
 /**
  * @author hensemlee
@@ -161,7 +137,7 @@ public class EasyMavenDeployTool {
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
             deployFile(new ArrayList<>(candidatePomFiles));
             System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
-            GitUtils.commitAndPushCode(System.getenv("TARGET_PROJECT_FOLDER"), new ArrayList<>(commitPomFiles), finalNewVersion);
+            GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles), finalNewVersion);
             System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
             System.exit(1);
         }
@@ -184,10 +160,8 @@ public class EasyMavenDeployTool {
             absolutePathByArtifactId.values().forEach(pom -> {
                 try {
                     boolean flag = POMUtils.checkCandidatePom(pom, oldVersion);
-                    if (flag) {
-                        if (artifactIdByAbsolutePath.containsKey(pom)) {
-                            candidatePomFiles.add(pom);
-                        }
+                    if (flag && artifactIdByAbsolutePath.containsKey(pom)) {
+						candidatePomFiles.add(pom);
                     }
                 } catch (Exception e) {
                     throw new EasyDeployException("查询业务子工程POM失败");
@@ -248,6 +222,7 @@ public class EasyMavenDeployTool {
                     countDownLatch.await();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+					Thread.currentThread().interrupt();
                 }
                 String content =  String.join("",  listener.getMessages());
                 assistant  = new Message("assistant", content);
@@ -269,7 +244,6 @@ public class EasyMavenDeployTool {
         if (!CollUtil.isEmpty(projects) && !FIX_FLAG.equalsIgnoreCase(projects.get(0))) {
             List<String> candidatePomFiles = matchProject(projects);
             deployFile(candidatePomFiles);
-            System.out.println("\u001B[32m>>>>>>> deploy完成! >>>>>>>\u001B[0m");
             System.exit(1);
         }
 
@@ -297,24 +271,6 @@ public class EasyMavenDeployTool {
                 prompt.put(project, promptSet);
             });
             promotion(prompt);
-
-//            Invoker invoker = getInvoker();
-//
-//            candidateProjects.forEach(candidate -> {
-//                InvocationRequest request = new DefaultInvocationRequest();
-//                request.setPomFile(new File(absolutePathByArtifactId.get(candidate)));
-//                request.setGoals(Collections.singletonList("idea:idea"));
-//                try {
-//                    System.out.println("\u001B[32m>>>>>>> start to fix dependency " + candidate
-//                        + " >>>>>>> \u001B[0m");
-//                    invoker.execute(request);
-//                    System.out.println("\u001B[32m>>>>>>> " + request.getPomFile()
-//                        + " dependency fix successfully ! >>>>>>> \u001B[0m");
-//                } catch (MavenInvocationException e) {
-//                    System.out.println("\u001B[31m>>>>>>> " + request.getPomFile()
-//                        + " dependency fix failure ! >>>>>>> \u001B[0m");
-//                }
-//            });
             candidateProjects.forEach(candidate -> {
                 ProcessBuilder processBuilder = new ProcessBuilder("mvn", "idea:idea");
                 String path = absolutePathByArtifactId.get(candidate);
@@ -349,27 +305,11 @@ public class EasyMavenDeployTool {
                 } catch (IOException | InterruptedException e) {
                     System.out.println("\u001B[31m>>>>>>> " + candidate
                         + " dependency fix failure ! >>>>>>> \u001B[0m");
+					Thread.currentThread().interrupt();
                 }
             });
             System.exit(1);
         }
-    }
-
-    private static List<Message> buildMessages(FixedSizeQueue<String> prompts,
-        FixedSizeQueue<String> assistants) {
-        List<Message> messages = new ArrayList<>();
-        prompts.getList().forEach(prompt -> {
-            Message message = new Message("user", prompt);
-            messages.add(message);
-        });
-        assistants.getList().forEach(assistant -> {
-            if (StrUtil.isBlank(assistant)) {
-                return;
-            }
-            Message message = new Message("assistant", assistant);
-            messages.add(message);
-        });
-        return messages;
     }
 
     /**
@@ -435,7 +375,7 @@ public class EasyMavenDeployTool {
 
     private static Map<String, String> findAllNeedDeployedPomFiles() {
         Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-        File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
+        File rootDir = new File(System.getenv(TARGET_PROJECT_FOLDER));
         Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
         while (iterator.hasNext()) {
             File file = iterator.next();
@@ -454,11 +394,25 @@ public class EasyMavenDeployTool {
             System.out.println("\u001B[33mNo POM need to deploy!\u001B[0m");
             System.exit(1);
         }
-        System.out.println("\u001B[32m>>>>>>> start to deploy " + candidatePomFiles.size()
+		List<SortHelper> sortHelpers = new ArrayList<>();
+		candidatePomFiles.forEach(c -> {
+			SortHelper sortHelper = new SortHelper();
+			sortHelper.setName(c);
+			String artifactId = artifactIdByAbsolutePath.get(c);
+			if (StrUtil.isNotBlank(artifactId)) {
+				sortHelper.setSort(DeployUtils.indexOf(artifactId));
+			}
+			sortHelpers.add(sortHelper);
+
+		});
+		List<String> sortedCandidatePomFiles = sortHelpers.stream().sorted(Comparator.comparing(SortHelper::getSort))
+				.map(SortHelper::getName).collect(Collectors.toList());
+
+		System.out.println("\u001B[32m>>>>>>> start to deploy " + sortedCandidatePomFiles.size()
             + " projects below sequencelly: >>>>>>>\u001B[0m");
-        candidatePomFiles.forEach(System.out::println);
+		sortedCandidatePomFiles.forEach(System.out::println);
         Set<String> deployFailureProjects = new HashSet<>();
-        candidatePomFiles.forEach(candidate -> {
+		sortedCandidatePomFiles.forEach(candidate -> {
             ProcessBuilder processBuilder = new ProcessBuilder("mvn", "deploy");
             int index = candidate.lastIndexOf("/pom.xml");
             processBuilder.directory(new File(candidate.substring(0, index)));
@@ -489,6 +443,7 @@ public class EasyMavenDeployTool {
                 System.out.println(
                     "\u001B[31m>>>>>>> " + candidate + " deploy failure !\u001B[0m");
                 deployFailureProjects.add(candidate);
+				Thread.currentThread().interrupt();
             }
         });
         System.out.println("\u001B[32m>>>>>>> deploy情况如下: >>>>>>>\u001B[0m");
@@ -538,7 +493,7 @@ public class EasyMavenDeployTool {
     }
 
     private static void fillMaps() {
-        File rootDir = new File(System.getenv("TARGET_PROJECT_FOLDER"));
+        File rootDir = new File(System.getenv(TARGET_PROJECT_FOLDER));
         Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
         while (iterator.hasNext()) {
             File file = iterator.next();
