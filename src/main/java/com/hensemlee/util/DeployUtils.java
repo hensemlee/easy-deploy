@@ -73,13 +73,7 @@ public class DeployUtils {
 
 	public static Map<String, String> findAllMavenProjects() {
 		Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-		String targetProjectFolder = System.getenv(TARGET_PROJECT_FOLDER);
-		if (StrUtil.isBlank(targetProjectFolder)) {
-			System.err.println(
-				"\u001B[31m please set TARGET_PROJECT_FOLDER env viriable " + "!\u001B[0m");
-			System.exit(1);
-		}
-		File rootDir = new File(targetProjectFolder);
+		File rootDir = new File(System.getenv(TARGET_PROJECT_FOLDER));
 		Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
 		while (iterator.hasNext()) {
 			File file = iterator.next();
