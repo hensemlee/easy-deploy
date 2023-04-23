@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,6 +44,8 @@ public class EasyMavenDeployTool {
     private static LongAccumulator accumulator = new LongAccumulator(Long::sum, 0L);
 
     private static FixedSizeQueue<Message> messages = new FixedSizeQueue<>(6);
+
+	private static AtomicBoolean deployFail = new AtomicBoolean(false);
 
     static {
         fillMaps();
@@ -137,8 +140,11 @@ public class EasyMavenDeployTool {
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
             deployFile(new ArrayList<>(candidatePomFiles));
             System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
-            GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles), finalNewVersion);
-            System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
+			if (deployFail.get()) {
+				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles),
+						finalNewVersion);
+				System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
+			}
             System.exit(1);
         }
 
@@ -451,6 +457,7 @@ public class EasyMavenDeployTool {
             System.out.println(
                 "\u001B[32m>>>>>>> all projects deploy successfully >>>>>>>\u001B[0m");
         } else {
+			deployFail.set(true);
             deployFailureProjects.forEach(deploy -> System.out.println(
                 "\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
         }
