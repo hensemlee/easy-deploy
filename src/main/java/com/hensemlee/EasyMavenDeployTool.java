@@ -163,9 +163,9 @@ public class EasyMavenDeployTool {
             });
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
             deployFile(new ArrayList<>(candidatePomFiles));
-            System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
 			if (!deployFail.get()) {
-				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles),
+          System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
+          GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles),
 						finalNewVersion);
 				System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
 			}
