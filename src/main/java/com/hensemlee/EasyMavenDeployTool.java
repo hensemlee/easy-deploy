@@ -1,5 +1,22 @@
 package com.hensemlee;
 
+import static com.hensemlee.contants.Constants.ALL_DEPLOY_FLAG;
+import static com.hensemlee.contants.Constants.CHAT_FLAG;
+import static com.hensemlee.contants.Constants.DEV_FLAG;
+import static com.hensemlee.contants.Constants.FIX_FLAG;
+import static com.hensemlee.contants.Constants.INCREMENT;
+import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
+import static com.hensemlee.contants.Constants.OPENAI_API_HOST_DEFAULT_VALUE;
+import static com.hensemlee.contants.Constants.OPENAI_API_KEY;
+import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
+import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.PRD_FLAG;
+import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
+import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
+import static com.hensemlee.contants.Constants.TARGET_PROJECT_FOLDER;
+
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
@@ -17,21 +34,28 @@ import com.plexpt.chatgpt.ChatGPTStream;
 import com.plexpt.chatgpt.entity.chat.ChatCompletion;
 import com.plexpt.chatgpt.entity.chat.Message;
 import com.plexpt.chatgpt.listener.ConsoleStreamListener;
-import org.apache.commons.lang3.StringUtils;
-import org.dom4j.Document;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import static com.hensemlee.contants.Constants.*;
+import org.apache.commons.lang3.StringUtils;
+import org.dom4j.Document;
 
 /**
  * @author hensemlee
@@ -140,7 +164,7 @@ public class EasyMavenDeployTool {
             System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
             deployFile(new ArrayList<>(candidatePomFiles));
             System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
-			if (deployFail.get()) {
+			if (!deployFail.get()) {
 				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles),
 						finalNewVersion);
 				System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
