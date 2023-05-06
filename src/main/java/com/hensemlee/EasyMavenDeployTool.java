@@ -67,7 +67,7 @@ public class EasyMavenDeployTool {
 
     private static LongAccumulator accumulator = new LongAccumulator(Long::sum, 0L);
 
-    private static FixedSizeQueue<Message> messages = new FixedSizeQueue<>(6);
+    private static FixedSizeQueue<Message> messages = new FixedSizeQueue<>(10);
 
 	private static AtomicBoolean deployFail = new AtomicBoolean(false);
 
@@ -80,29 +80,29 @@ public class EasyMavenDeployTool {
         // 从命令行参数获取要deploy的项目
         if (args.length == 0) {
             System.out.println(
-                "\u001B[31mUsage: easy-deploy project_name1 project_name2 ...\u001B[0m");
+                "\u001B[32mUsage: easy-deploy project_name1 project_name2 ...\u001B[0m");
             System.out.println(
-                "\u001B[31m       (发布SNAPSHOT或RELEASE到远程maven仓库)\u001B[0m");
+                "\u001B[32m       (发布SNAPSHOT或RELEASE到远程maven仓库)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy fix project_name1 project_name2 ...\u001B[0m");
+                "\u001B[32mUsage: easy-deploy fix project_name1 project_name2 ...\u001B[0m");
             System.out.println(
-                "\u001B[31m       (解决依赖引用不到的情况)\u001B[0m");
+                "\u001B[32m       (解决依赖引用不到的情况)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy all \u001B[0m");
+                "\u001B[32mUsage: easy-deploy all \u001B[0m");
             System.out.println(
-                "\u001B[31m       (发布所有需要deploy的项目到远程maven仓库)\u001B[0m");
+                "\u001B[32m       (发布所有需要deploy的项目到远程maven仓库)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy dev \u001B[0m");
+                "\u001B[32mUsage: easy-deploy dev \u001B[0m");
             System.out.println(
-                "\u001B[31m       (开发时，merge了origin/master或改了api-xxxx需要一键deploy的情况)\u001B[0m");
+                "\u001B[32m       (开发时，merge了origin/master或改了api-xxxx需要一键deploy的情况)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy prd \u001B[0m");
+                "\u001B[32mUsage: easy-deploy prd \u001B[0m");
             System.out.println(
-                "\u001B[31m       (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库、提交代码，准备部署上线)\u001B[0m");
+                "\u001B[32m       (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库、提交代码，准备部署上线)\u001B[0m");
             System.out.println(
-                "\u001B[31mUsage: easy-deploy chat xxxxxxx \u001B[0m");
+                "\u001B[32mUsage: easy-deploy chat xxxxxxx \u001B[0m");
             System.out.println(
-                "\u001B[31m       (在IDE里开发时，随时可在命令行发起ChatGPT提问&聊天)\u001B[0m");
+                "\u001B[32m       (在IDE里开发时，随时可在命令行发起ChatGPT提问&聊天)\u001B[0m");
             System.exit(1);
         }
         List<String> projects = Arrays.stream(args).filter(StringUtils::isNotBlank).collect(Collectors.toList());
