@@ -1,8 +1,5 @@
 package com.hensemlee.util;
 
-import static com.hensemlee.contants.Constants.DEFAULT_COMMIT_MSG;
-import static com.hensemlee.contants.Constants.GIT_CMD;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +7,8 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+
+import static com.hensemlee.contants.Constants.*;
 
 /**
  * @author hensemlee
@@ -20,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GitUtils {
 
-    public static void commitAndPushCode(String repoPath, List<String> commitPomFiles, String releaseVersion)
+    public static void commitAndPushCode(String repoPath, List<String> commitPomFiles, String commitMsg)
         throws IOException, InterruptedException {
 
         List<String> commandList = new ArrayList<>();
@@ -40,7 +39,7 @@ public class GitUtils {
         builder.append(" ");
         builder.append("-m");
         builder.append(" ");
-        builder.append(String.format(DEFAULT_COMMIT_MSG, releaseVersion));
+        builder.append(commitMsg);
         builder.append(" ");
         builder.append("&&");
         builder.append(" ");
@@ -73,4 +72,40 @@ public class GitUtils {
             }
         }
     }
+
+	public static String getCurrentBranch(String repoPath) {
+		List<String> commandList = new ArrayList<>();
+		commandList.add("sh");
+		commandList.add("-c");
+		commandList.add("git rev-parse --abbrev-ref HEAD");
+		String[] commands = commandList.toArray(new String[commandList.size()]);
+		ProcessBuilder processBuilder = new ProcessBuilder().directory(new File(repoPath))
+			.command(commands);
+		// 启动进程并等待完成
+		Process process;
+		try {
+			process = processBuilder.start();
+			int exitCode = process.waitFor();
+			if (exitCode == 0) {
+				new BufferedReader(new InputStreamReader(process.getInputStream()));
+				BufferedReader reader = new BufferedReader(
+					new InputStreamReader(process.getInputStream()));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					return line;
+				}
+			} else {
+				System.err.println(
+					"\u001B[31mGit command failed with exit code " + exitCode + "!\u001B[0m");
+				BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+				String line;
+				while ((line = errorReader.readLine()) != null) {
+					System.err.println("\u001B[31m" +  line + " \u001B[0m");
+				}
+			}
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

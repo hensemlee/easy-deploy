@@ -20,7 +20,7 @@ public class Constants {
 
     public static final String GIT_CMD = "git";
 
-    public static final String DEFAULT_COMMIT_MSG = "\"upgrade to %s && release\"";
+    public static final String DEFAULT_COMMIT_MSG = "\"upgrade to %s\"";
 
     public static final String ALL_DEPLOY_FLAG = "ALL";
     public static final String FIX_FLAG = "FIX";
@@ -44,4 +44,10 @@ public class Constants {
     public static final String OPENAI_API_HOST = "OPENAI_API_HOST";
 
     public static final String TARGET_PROJECT_FOLDER = "TARGET_PROJECT_FOLDER";
+
+	public static final String API_DELAYED_PROJECT_NAME = "api-delayed";
+
+	public static final String DEFAULT_API_DELAYED_VERSION = "API-DELAYED-LOCAL-1.0.0-SNAPSHOT";
+	public static final String DEFAULT_REVISION = "DAM-LOCAL-1.0.0-SNAPSHOT";
+
 }

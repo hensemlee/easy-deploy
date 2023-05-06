@@ -1,5 +1,6 @@
 package com.hensemlee.util;
 
+import static com.hensemlee.contants.Constants.API_DELAYED_PROJECT_NAME;
 import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
 
 import com.hensemlee.exception.EasyDeployException;
@@ -109,7 +110,7 @@ public class POMUtils {
         return false;
     }
 
-    private static void writeDocument(Document document, File pomFile) throws IOException {
+	public static void writeDocument(Document document, File pomFile) throws IOException {
         FileWriter fileWriter = null;
         try {
             fileWriter = new FileWriter(pomFile);
@@ -137,4 +138,21 @@ public class POMUtils {
         }
         return document;
     }
+
+	public static Document getApiDelayedDocument() {
+		Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+		String apiDelayedPom = absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME);
+		File pomFile = new File(apiDelayedPom);
+		SAXReader reader = new SAXReader();
+		Document document;
+		try {
+			document = reader.read(pomFile);
+		} catch (DocumentException e) {
+			throw new EasyDeployException("Error reading pom.xml: " + e.getMessage());
+		}
+		if (Objects.isNull(document)) {
+			throw new EasyDeployException("parent pom.xml not found");
+		}
+		return document;
+	}
 }

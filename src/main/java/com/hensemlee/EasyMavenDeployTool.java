@@ -1,32 +1,13 @@
 package com.hensemlee;
 
-import static com.hensemlee.contants.Constants.ALL_DEPLOY_FLAG;
-import static com.hensemlee.contants.Constants.CHAT_FLAG;
-import static com.hensemlee.contants.Constants.DEV_FLAG;
-import static com.hensemlee.contants.Constants.FIX_FLAG;
-import static com.hensemlee.contants.Constants.INCREMENT;
-import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
-import static com.hensemlee.contants.Constants.OPENAI_API_HOST_DEFAULT_VALUE;
-import static com.hensemlee.contants.Constants.OPENAI_API_KEY;
-import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
-import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
-import static com.hensemlee.contants.Constants.PRD_FLAG;
-import static com.hensemlee.contants.Constants.RELEASE_PATTERN;
-import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
-import static com.hensemlee.contants.Constants.TARGET_PROJECT_FOLDER;
-
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.hensemlee.bean.FixedSizeQueue;
 import com.hensemlee.bean.SortHelper;
 import com.hensemlee.bean.req.EffectiveMavenReq;
 import com.hensemlee.exception.EasyDeployException;
-import com.hensemlee.util.ArtifactQueryUtils;
 import com.hensemlee.util.DeployUtils;
 import com.hensemlee.util.GitUtils;
 import com.hensemlee.util.POMUtils;
@@ -34,28 +15,21 @@ import com.plexpt.chatgpt.ChatGPTStream;
 import com.plexpt.chatgpt.entity.chat.ChatCompletion;
 import com.plexpt.chatgpt.entity.chat.Message;
 import com.plexpt.chatgpt.listener.ConsoleStreamListener;
+import org.apache.commons.lang3.StringUtils;
+import org.dom4j.Document;
+import org.dom4j.Element;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAccumulator;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
-import org.dom4j.Document;
+
+import static com.hensemlee.contants.Constants.*;
 
 /**
  * @author hensemlee
@@ -113,92 +87,108 @@ public class EasyMavenDeployTool {
         }
 
         if (projects.size() == 1 && PRD_FLAG.equalsIgnoreCase(projects.get(0))) {
-            Document document = POMUtils.getParentDocument();
-            String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
-            String oldVersion = document.getRootElement().element("version").getText();
-            String artifactId = document.getRootElement().element("artifactId").getText();
-            if (Pattern.matches(RELEASE_PATTERN, oldVersion)) {
-                System.out.println("\u001B[31m>>>>>>> 当前Parent已是RELEASE版本，是否继续？\u001B[0m");
-                Scanner scanner = new Scanner(System.in);
-                System.out.print("\u001B[31m请输入 'y' 继续执行，或者输入其他字符结束执行：\u001B[0m");
-                String input = scanner.next();
-                if (!input.equalsIgnoreCase("y")) {
-                    System.exit(1);
-                }
-            }
-            String currentVersion = ArtifactQueryUtils.queryCandidateVersion(buildReq(artifactId));
-            List<String> splits = Arrays.stream(currentVersion.split("\\."))
-                .collect(Collectors.toList());
-            if (CollUtil.isEmpty(splits)) {
-                throw new EasyDeployException("查询Parent最新版本失败");
-            }
-            Set<String> candidatePomFiles =  Sets.newHashSet();
-            Set<String> commitPomFiles = Sets.newHashSet();
-            String finalNewVersion;
-            candidatePomFiles.add(parentPOM);
-            commitPomFiles.add(parentPOM);
-            System.out.println("\u001B[32m>>>>>>> start to update parent pom release version !\u001B[0m");
-            try {
-                finalNewVersion = generateFinalNewVersion(splits);
-                POMUtils.updateParentPomVersion(parentPOM, oldVersion, finalNewVersion);
-            } catch (Exception e) {
-                throw new EasyDeployException("更新Parent工程POM失败");
-            }
-            System.out.println("\u001B[32m>>>>>>> update parent pom release version successfully !\u001B[0m");
-            System.out.println("\u001B[32m>>>>>>> start to update other pom release version  !\u001B[0m");
-            Map<String, String> allAbsolutePathByArtifactId = DeployUtils.findAllMavenProjects();
-            allAbsolutePathByArtifactId.values().forEach(pom -> {
-                try {
-                    boolean flag = POMUtils.updatePomVersion(pom, oldVersion, finalNewVersion);
-                    if (flag) {
-                        commitPomFiles.add(pom);
-                        if (artifactIdByAbsolutePath.containsKey(pom)) {
-                            System.out.println("\u001B[32m>>>>>>> update " + artifactIdByAbsolutePath.get(pom) + " release version successfully !\u001B[0m");
-                            candidatePomFiles.add(pom);
-                        }
-                    }
-                } catch (Exception e) {
-                    throw new EasyDeployException("更新业务子工程POM失败");
-                }
-            });
-            System.out.println("\u001B[32m>>>>>>> other pom release version update successfully !\u001B[0m");
-            deployFile(new ArrayList<>(candidatePomFiles));
-			if (!deployFail.get()) {
-          System.out.println("\u001B[32m >>>>>>> start to commit and push \u001B[0m");
-          GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), new ArrayList<>(commitPomFiles),
-						finalNewVersion);
-				System.out.println("\u001B[32m >>>>>>> commit and push success \u001B[0m");
+
+			Document parentDocument = POMUtils.getParentDocument();
+			Element properties = parentDocument.getRootElement().element("properties");
+			Element revision = properties.element("revision");
+			Element versionApiDelayed = properties.element("version.api-delayed");
+
+			String tempReversion = revision.getText();
+			String tempVersionApiDelayed = versionApiDelayed.getText();
+
+			Document apiDelayedDocument = POMUtils.getApiDelayedDocument();
+			Element apiProperties = apiDelayedDocument.getRootElement().element("properties");
+			Element apiRevision = apiProperties.element("revision");
+			String tempAPiRevision = apiRevision.getText();
+
+			if (!Objects.equals(tempReversion, DEFAULT_REVISION ) || !Objects.equals(tempVersionApiDelayed, DEFAULT_API_DELAYED_VERSION) || !Objects.equals(tempAPiRevision, DEFAULT_API_DELAYED_VERSION)) {
+				revision.setText(DEFAULT_REVISION);
+				versionApiDelayed.setText(DEFAULT_API_DELAYED_VERSION);
+				POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
+
+				apiRevision.setText(DEFAULT_REVISION);
+				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
 			}
-            System.exit(1);
+
+			System.out.println("\u001B[31m>>>>>>> 已还原版本，开始push代码 \u001B[0m");
+			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(PARENT_PROJECT_NAME),
+					absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME));
+			GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, "revert version");
+			System.exit(1);
         }
 
         if (projects.size() == 1 && DEV_FLAG.equalsIgnoreCase(projects.get(0))) {
-            Document parentDocument = POMUtils.getParentDocument();
-            String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
-            String oldVersion = parentDocument.getRootElement().element("version").getText();
-            if (!oldVersion.endsWith(SNAPSHOT_SUFFIX)) {
-                System.out.println("\u001B[31m>>>>>>> 当前Parent非SNAPSHOT版本，是否继续？\u001B[0m");
-                Scanner scanner = new Scanner(System.in);
-                System.out.print("\u001B[31m请输入 'y' 继续执行，或者输入其他字符结束执行：\u001B[0m");
-                String input = scanner.next();
-                if (!input.equalsIgnoreCase("y")) {
-                    System.exit(1);
-                }
-            }
-            Set<String> candidatePomFiles = Sets.newHashSet();
-            candidatePomFiles.add(parentPOM);
-            absolutePathByArtifactId.values().forEach(pom -> {
-                try {
-                    boolean flag = POMUtils.checkCandidatePom(pom, oldVersion);
-                    if (flag && artifactIdByAbsolutePath.containsKey(pom)) {
-						candidatePomFiles.add(pom);
-                    }
-                } catch (Exception e) {
-                    throw new EasyDeployException("查询业务子工程POM失败");
-                }
-            });
-            deployFile(new ArrayList<>(candidatePomFiles));
-            System.exit(1);
+			boolean firstUpdate = false;
+			String currentBranch = GitUtils.getCurrentBranch(System.getenv(TARGET_PROJECT_FOLDER));
+
+			Document parentDocument = POMUtils.getParentDocument();
+			Element properties = parentDocument.getRootElement().element("properties");
+			List<Element> elements = properties.elements();
+			Element revision = null;
+			Element versionApiDelayed = null;
+
+			for (Element element : elements) {
+				if (Objects.equals(element.getQName().getName(), "revision")) {
+					revision = element;
+				}
+				if (Objects.equals(element.getQName().getName(), "version.api-delayed")) {
+					versionApiDelayed = element;
+				}
+			}
+			if (Objects.isNull(revision) || Objects.isNull(versionApiDelayed)) {
+				System.out.println("\u001B[31m>>>>>>> 请检查parent pom.xml文件中是否有revision和version.api-delayed节点 \u001B[0m");
+				System.exit(1);
+			}
+
+			String tempReversion = revision.getText();
+			String tempVersionApiDelayed = versionApiDelayed.getText();
+
+			Document apiDelayedDocument = POMUtils.getApiDelayedDocument();
+			Element apiProperties = apiDelayedDocument.getRootElement().element("properties");
+			List<Element> apiElements = apiProperties.elements();
+			Element apiRevision = null;
+			for (Element element : apiElements) {
+				if (Objects.equals(element.getQName().getName(), "revision")) {
+					apiRevision = element;
+				}
+			}
+
+			if (Objects.isNull(apiRevision)) {
+				System.out.println("\u001B[31m>>>>>>> 请检查api-delayed pom.xml文件中是否有revision节点 \u001B[0m");
+				System.exit(1);
+			}
+
+			String tempAPiRevision = apiRevision.getText();
+
+			if (!Objects.equals(tempReversion, currentBranch + SNAPSHOT_SUFFIX ) || !Objects.equals(tempVersionApiDelayed, currentBranch + SNAPSHOT_SUFFIX) || !Objects.equals(tempAPiRevision, currentBranch + SNAPSHOT_SUFFIX)) {
+				revision.setText(currentBranch + SNAPSHOT_SUFFIX);
+				versionApiDelayed.setText(currentBranch + SNAPSHOT_SUFFIX);
+				POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
+
+				apiRevision.setText(currentBranch + SNAPSHOT_SUFFIX);
+				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
+				firstUpdate = true;
+			}
+
+			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(PARENT_PROJECT_NAME),
+					absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME));
+			System.out.println("\u001B[32m>>>>>>> start to install " + pomFiles.size()
+					+ " projects below : >>>>>>>\u001B[0m");
+			pomFiles.forEach(System.out::println);
+			DeployUtils.installToLocal(pomFiles);
+			System.out.println("\u001B[32m>>>>>>> all projects install successfully >>>>>>>\u001B[0m");
+
+			if (firstUpdate) {
+				System.out.println("\u001B[31m>>>>>>> 已修改版本，是否需要push代码？\u001B[0m");
+				Scanner scanner = new Scanner(System.in);
+				System.out.print("\u001B[31m输入 'y' push代码，或者输入其他字符结束执行：\u001B[0m");
+				String input = scanner.next();
+				if (!input.equalsIgnoreCase("y")) {
+					System.exit(1);
+				}
+//				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, String.format(DEFAULT_COMMIT_MSG, currentBranch + SNAPSHOT_SUFFIX));
+				System.exit(1);
+			}
         }
 
         if (projects.size() > 0 && CHAT_FLAG.equalsIgnoreCase(projects.get(0))) {

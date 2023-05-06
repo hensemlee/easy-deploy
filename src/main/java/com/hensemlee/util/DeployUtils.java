@@ -7,13 +7,12 @@ import cn.hutool.core.util.StrUtil;
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
 import com.google.common.io.Files;
+
+import java.io.BufferedReader;
 import java.io.File;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.hensemlee.contants.Constants.*;
@@ -83,5 +82,47 @@ public class DeployUtils {
 			}
 		}
 		return absolutePathByArtifactId;
+	}
+
+	public static String installToLocal(List<String> pomFiles) {
+		List<String> commandList = new ArrayList<>();
+		commandList.add("sh");
+		commandList.add("-c");
+		StringBuilder builder = new StringBuilder();
+		builder.append("mvn install -f ");
+		pomFiles.forEach(commit -> {
+			builder.append(commit);
+			builder.append(" ");
+		});
+		commandList.add(builder.toString());
+		String[] commands = commandList.toArray(new String[commandList.size()]);
+		ProcessBuilder processBuilder = new ProcessBuilder()
+				.command(commands);
+		// 启动进程并等待完成
+		Process process;
+		try {
+			process = processBuilder.start();
+			int exitCode = process.waitFor();
+			if (exitCode == 0) {
+				new BufferedReader(new InputStreamReader(process.getInputStream()));
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(process.getInputStream()));
+				String line;
+				while ((line = reader.readLine()) != null) {
+					return line;
+				}
+			} else {
+				System.err.println(
+						"\u001B[31mmvn install failed with exit code " + exitCode + "!\u001B[0m");
+				BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+				String line;
+				while ((line = errorReader.readLine()) != null) {
+					System.err.println("\u001B[31m" +  line + " \u001B[0m");
+				}
+			}
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 }
