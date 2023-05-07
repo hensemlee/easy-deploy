@@ -2,20 +2,23 @@ package com.hensemlee.util;
 
 import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_API_KEY;
 import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
+import static com.hensemlee.contants.Constants.TARGET_PROJECT_FOLDER;
 
-import cn.hutool.core.util.StrUtil;
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
 import com.google.common.io.Files;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static com.hensemlee.contants.Constants.*;
 
 /**
  * @author hensemlee
@@ -84,10 +87,11 @@ public class DeployUtils {
 		return absolutePathByArtifactId;
 	}
 
+
+	// ProcessBuilder processBuilder = new ProcessBuilder("mvn", "idea:idea");
+
 	public static String installToLocal(List<String> pomFiles) {
 		List<String> commandList = new ArrayList<>();
-		commandList.add("sh");
-		commandList.add("-c");
 		StringBuilder builder = new StringBuilder();
 		builder.append("mvn install -f ");
 		pomFiles.forEach(commit -> {

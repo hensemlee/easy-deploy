@@ -1,5 +1,24 @@
 package com.hensemlee;
 
+import static com.hensemlee.contants.Constants.ALL_DEPLOY_FLAG;
+import static com.hensemlee.contants.Constants.API_DELAYED_PROJECT_NAME;
+import static com.hensemlee.contants.Constants.CHAT_FLAG;
+import static com.hensemlee.contants.Constants.DEFAULT_API_DELAYED_VERSION;
+import static com.hensemlee.contants.Constants.DEFAULT_REVISION;
+import static com.hensemlee.contants.Constants.DEV_FLAG;
+import static com.hensemlee.contants.Constants.FIX_FLAG;
+import static com.hensemlee.contants.Constants.INCREMENT;
+import static com.hensemlee.contants.Constants.MAJOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.MINOR_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.OPENAI_API_HOST;
+import static com.hensemlee.contants.Constants.OPENAI_API_HOST_DEFAULT_VALUE;
+import static com.hensemlee.contants.Constants.OPENAI_API_KEY;
+import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
+import static com.hensemlee.contants.Constants.PATCH_VERSION_THRESHOLD;
+import static com.hensemlee.contants.Constants.PRD_FLAG;
+import static com.hensemlee.contants.Constants.SNAPSHOT_SUFFIX;
+import static com.hensemlee.contants.Constants.TARGET_PROJECT_FOLDER;
+
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.google.common.collect.Lists;
@@ -15,21 +34,28 @@ import com.plexpt.chatgpt.ChatGPTStream;
 import com.plexpt.chatgpt.entity.chat.ChatCompletion;
 import com.plexpt.chatgpt.entity.chat.Message;
 import com.plexpt.chatgpt.listener.ConsoleStreamListener;
-import org.apache.commons.lang3.StringUtils;
-import org.dom4j.Document;
-import org.dom4j.Element;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Scanner;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.stream.Collectors;
-
-import static com.hensemlee.contants.Constants.*;
+import org.apache.commons.lang3.StringUtils;
+import org.dom4j.Document;
+import org.dom4j.Element;
 
 /**
  * @author hensemlee
@@ -160,18 +186,18 @@ public class EasyMavenDeployTool {
 
 			String tempAPiRevision = apiRevision.getText();
 
-			if (!Objects.equals(tempReversion, currentBranch + SNAPSHOT_SUFFIX ) || !Objects.equals(tempVersionApiDelayed, currentBranch + SNAPSHOT_SUFFIX) || !Objects.equals(tempAPiRevision, currentBranch + SNAPSHOT_SUFFIX)) {
-				revision.setText(currentBranch + SNAPSHOT_SUFFIX);
-				versionApiDelayed.setText(currentBranch + SNAPSHOT_SUFFIX);
-				POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
+          Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+          if (!Objects.equals(tempReversion, currentBranch + SNAPSHOT_SUFFIX ) || !Objects.equals(tempVersionApiDelayed, currentBranch + SNAPSHOT_SUFFIX) || !Objects.equals(tempAPiRevision, currentBranch + SNAPSHOT_SUFFIX)) {
+        revision.setText(currentBranch + SNAPSHOT_SUFFIX);
+        versionApiDelayed.setText(currentBranch + SNAPSHOT_SUFFIX);
+        POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
 
-				apiRevision.setText(currentBranch + SNAPSHOT_SUFFIX);
+        apiRevision.setText(currentBranch + SNAPSHOT_SUFFIX);
 				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
 				firstUpdate = true;
 			}
 
-			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(PARENT_PROJECT_NAME),
-					absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME));
+			List<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME), absolutePathByArtifactId.get(PARENT_PROJECT_NAME));
 			System.out.println("\u001B[32m>>>>>>> start to install " + pomFiles.size()
 					+ " projects below : >>>>>>>\u001B[0m");
 			pomFiles.forEach(System.out::println);
