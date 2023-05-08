@@ -19,10 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.dom4j.Document;
 import org.dom4j.Element;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -100,7 +97,7 @@ public class EasyMavenDeployTool {
 			Element apiProperties = apiDelayedDocument.getRootElement().element("properties");
 			Element apiRevision = apiProperties.element("revision");
 			String tempAPiRevision = apiRevision.getText();
-
+			Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
 			if (!Objects.equals(tempReversion, DEFAULT_REVISION ) || !Objects.equals(tempVersionApiDelayed, DEFAULT_API_DELAYED_VERSION) || !Objects.equals(tempAPiRevision, DEFAULT_API_DELAYED_VERSION)) {
 				revision.setText(DEFAULT_REVISION);
 				versionApiDelayed.setText(DEFAULT_API_DELAYED_VERSION);
@@ -110,17 +107,22 @@ public class EasyMavenDeployTool {
 				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
 			}
 
-			System.out.println("\u001B[31m>>>>>>> 已还原版本，开始push代码 \u001B[0m");
-			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(PARENT_PROJECT_NAME),
-					absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME));
-			GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, "revert version");
+			System.out.println("\u001B[31m>>>>>>> 已还原版本，是否需要push代码？ \u001B[0m");
+			Scanner scanner = new Scanner(System.in);
+			System.out.print("\u001B[31m输入 'y' push代码，或者输入其他字符结束执行：\u001B[0m");
+			String input = scanner.next();
+			if (!input.equalsIgnoreCase("y")) {
+				System.exit(1);
+			}
+			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME), absolutePathByArtifactId.get(PARENT_PROJECT_NAME));
+			GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, "\"revert version\"");
 			System.exit(1);
         }
 
         if (projects.size() == 1 && DEV_FLAG.equalsIgnoreCase(projects.get(0))) {
 			boolean firstUpdate = false;
 			String currentBranch = GitUtils.getCurrentBranch(System.getenv(TARGET_PROJECT_FOLDER));
-
+			currentBranch = removeIllegalChars(currentBranch);
 			Document parentDocument = POMUtils.getParentDocument();
 			Element properties = parentDocument.getRootElement().element("properties");
 			List<Element> elements = properties.elements();
@@ -159,7 +161,7 @@ public class EasyMavenDeployTool {
 			}
 
 			String tempAPiRevision = apiRevision.getText();
-
+			Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
 			if (!Objects.equals(tempReversion, currentBranch + SNAPSHOT_SUFFIX ) || !Objects.equals(tempVersionApiDelayed, currentBranch + SNAPSHOT_SUFFIX) || !Objects.equals(tempAPiRevision, currentBranch + SNAPSHOT_SUFFIX)) {
 				revision.setText(currentBranch + SNAPSHOT_SUFFIX);
 				versionApiDelayed.setText(currentBranch + SNAPSHOT_SUFFIX);
@@ -170,13 +172,27 @@ public class EasyMavenDeployTool {
 				firstUpdate = true;
 			}
 
-			ArrayList<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(PARENT_PROJECT_NAME),
-					absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME));
+			List<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME), absolutePathByArtifactId.get(PARENT_PROJECT_NAME));
 			System.out.println("\u001B[32m>>>>>>> start to install " + pomFiles.size()
 					+ " projects below : >>>>>>>\u001B[0m");
 			pomFiles.forEach(System.out::println);
-			DeployUtils.installToLocal(pomFiles);
-			System.out.println("\u001B[32m>>>>>>> all projects install successfully >>>>>>>\u001B[0m");
+			Set<String> installFailureProjects = new HashSet<>();
+			for (String pom : pomFiles) {
+				AtomicBoolean success = new AtomicBoolean(true);
+				install(pom.substring(0, pom.lastIndexOf("/pom.xml")), success);
+				if (!success.get()) {
+					installFailureProjects.add(pom);
+				}
+			}
+			System.out.println("\u001B[32m>>>>>>> install情况如下: >>>>>>>\u001B[0m");
+			if (installFailureProjects.isEmpty()) {
+				System.out.println(
+						"\u001B[32m>>>>>>> all projects install successfully >>>>>>>\u001B[0m");
+			} else {
+				installFailureProjects.forEach(deploy -> System.out.println(
+						"\u001B[31m>>>>>>> " + deploy + " install failure !\u001B[0m"));
+				System.exit(-1);
+			}
 
 			if (firstUpdate) {
 				System.out.println("\u001B[31m>>>>>>> 已修改版本，是否需要push代码？\u001B[0m");
@@ -186,9 +202,9 @@ public class EasyMavenDeployTool {
 				if (!input.equalsIgnoreCase("y")) {
 					System.exit(1);
 				}
-//				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, String.format(DEFAULT_COMMIT_MSG, currentBranch + SNAPSHOT_SUFFIX));
-				System.exit(1);
+				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, String.format(DEFAULT_COMMIT_MSG, currentBranch + SNAPSHOT_SUFFIX));
 			}
+			System.exit(1);
         }
 
         if (projects.size() > 0 && CHAT_FLAG.equalsIgnoreCase(projects.get(0))) {
@@ -331,6 +347,26 @@ public class EasyMavenDeployTool {
             System.exit(1);
         }
     }
+
+	private static void install(String path, AtomicBoolean success) throws IOException, InterruptedException {
+
+		ProcessBuilder pb = new ProcessBuilder("mvn", "clean", "install", "-DskipTests");
+		pb.directory(new File(path));
+		pb.redirectErrorStream(true);
+		Process process = pb.start();
+		InputStream is = process.getInputStream();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			System.out.println(line);
+		}
+		int exitCode = process.waitFor();
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
+		if (exitCode == 0) {
+		} else {
+			success.set(false);
+		}
+	}
 
     /**
      * 模糊匹配项目
@@ -533,4 +569,8 @@ public class EasyMavenDeployTool {
             }
         }
     }
+	private static String removeIllegalChars(String str) {
+		// 去掉 / : " < > | ? *
+		return str.replaceAll("[/:\"><|?*]", "");
+	}
 }

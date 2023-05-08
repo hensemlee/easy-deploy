@@ -1,9 +1,5 @@
 package com.hensemlee.util;
 
-import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_API_KEY;
-import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
-
-import cn.hutool.core.util.StrUtil;
 import com.ctrip.framework.apollo.Config;
 import com.ctrip.framework.apollo.ConfigService;
 import com.google.common.io.Files;
@@ -84,45 +80,45 @@ public class DeployUtils {
 		return absolutePathByArtifactId;
 	}
 
-	public static String installToLocal(List<String> pomFiles) {
-		List<String> commandList = new ArrayList<>();
-		commandList.add("sh");
-		commandList.add("-c");
-		StringBuilder builder = new StringBuilder();
-		builder.append("mvn install -f ");
-		pomFiles.forEach(commit -> {
-			builder.append(commit);
-			builder.append(" ");
-		});
-		commandList.add(builder.toString());
-		String[] commands = commandList.toArray(new String[commandList.size()]);
-		ProcessBuilder processBuilder = new ProcessBuilder()
-				.command(commands);
-		// 启动进程并等待完成
-		Process process;
-		try {
-			process = processBuilder.start();
-			int exitCode = process.waitFor();
-			if (exitCode == 0) {
-				new BufferedReader(new InputStreamReader(process.getInputStream()));
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(process.getInputStream()));
-				String line;
-				while ((line = reader.readLine()) != null) {
-					return line;
+	public static void installToLocal(List<String> pomFiles) {
+		Set<String> deployFailureProjects = new HashSet<>();
+		for (String pom : pomFiles) {
+			File directory = new File(pom.substring(0, pom.lastIndexOf("/pom.xml")));
+			ProcessBuilder pb = new ProcessBuilder("mvn", "install", "-DskipTests");
+			pb.directory(directory);
+			pb.redirectErrorStream(true);
+			// 启动进程并等待完成
+			try {
+				Process process = pb.start();
+				int exitCode = process.waitFor();
+				if (exitCode == 0) {
+					BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+					String line;
+					while ((line = reader.readLine()) != null) {
+						System.out.println(line);
+					}
+				} else {
+					deployFailureProjects.add(pom);
+					System.err.println(
+							"\u001B[31mmvn install failed with exit code " + exitCode + "!\u001B[0m");
+					BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+					String line;
+					while ((line = errorReader.readLine()) != null) {
+						System.err.println("\u001B[31m" +  line + " \u001B[0m");
+					}
 				}
-			} else {
-				System.err.println(
-						"\u001B[31mmvn install failed with exit code " + exitCode + "!\u001B[0m");
-				BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-				String line;
-				while ((line = errorReader.readLine()) != null) {
-					System.err.println("\u001B[31m" +  line + " \u001B[0m");
-				}
+			} catch (IOException | InterruptedException e) {
+				deployFailureProjects.add(pom);
+				e.printStackTrace();
 			}
-		} catch (IOException | InterruptedException e) {
-			e.printStackTrace();
 		}
-		return null;
+		System.out.println("\u001B[32m>>>>>>> install情况如下: >>>>>>>\u001B[0m");
+		if (deployFailureProjects.isEmpty()) {
+			System.out.println(
+					"\u001B[32m>>>>>>> all projects install successfully >>>>>>>\u001B[0m");
+		} else {
+			deployFailureProjects.forEach(deploy -> System.out.println(
+					"\u001B[31m>>>>>>> " + deploy + " install failure !\u001B[0m"));
+		}
 	}
 }
