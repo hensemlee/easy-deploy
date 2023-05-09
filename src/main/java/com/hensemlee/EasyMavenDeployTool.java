@@ -51,25 +51,21 @@ public class EasyMavenDeployTool {
         // 从命令行参数获取要deploy的项目
         if (args.length == 0) {
             System.out.println(
-                "\u001B[32mUsage: easy-deploy project_name1 project_name2 ...\u001B[0m");
-            System.out.println(
-                "\u001B[32m       (发布SNAPSHOT或RELEASE到远程maven仓库)\u001B[0m");
-            System.out.println(
                 "\u001B[32mUsage: easy-deploy fix project_name1 project_name2 ...\u001B[0m");
             System.out.println(
                 "\u001B[32m       (解决依赖引用不到的情况)\u001B[0m");
             System.out.println(
-                "\u001B[32mUsage: easy-deploy all \u001B[0m");
-            System.out.println(
-                "\u001B[32m       (发布所有需要deploy的项目到远程maven仓库)\u001B[0m");
-            System.out.println(
                 "\u001B[32mUsage: easy-deploy dev \u001B[0m");
             System.out.println(
-                "\u001B[32m       (开发时，merge了origin/master或改了api-xxxx需要一键deploy的情况)\u001B[0m");
+                "\u001B[32m       (开始开发时，需要改动公共包，该命令一键修改开发版本为当前分支名的SNAPSHOT版本并进行本地install)\u001B[0m");
+			System.out.println(
+					"\u001B[32mUsage: easy-deploy test \u001B[0m");
+			System.out.println(
+				"\u001B[32m       (开发后，想发到测试环境进行部署，该命令一键修改开发版本为当前分支名的SNAPSHOT版本并进行本地install并deploy至远程仓库)\u001B[0m");
             System.out.println(
                 "\u001B[32mUsage: easy-deploy prd \u001B[0m");
             System.out.println(
-                "\u001B[32m       (一键自动修改SNAPSHOT成RELEASE, 并发布远程maven仓库、提交代码，准备部署上线)\u001B[0m");
+                "\u001B[32m       (上线生产前，将开发版本号一键还原为默认版本号)\u001B[0m");
             System.out.println(
                 "\u001B[32mUsage: easy-deploy chat xxxxxxx \u001B[0m");
             System.out.println(
@@ -82,6 +78,94 @@ public class EasyMavenDeployTool {
                 "\u001B[31mUsage: easy-deploy project_name1 project_name2 ...\u001B[0m");
             System.exit(1);
         }
+
+		if (projects.size() == 1 && TEST_FLAG.equalsIgnoreCase(projects.get(0))) {
+			boolean firstUpdate = false;
+			String currentBranch = GitUtils.getCurrentBranch(System.getenv(TARGET_PROJECT_FOLDER));
+			currentBranch = removeIllegalChars(currentBranch);
+			Document parentDocument = POMUtils.getParentDocument();
+			Element properties = parentDocument.getRootElement().element("properties");
+			List<Element> elements = properties.elements();
+			Element revision = null;
+			Element versionApiDelayed = null;
+
+			for (Element element : elements) {
+				if (Objects.equals(element.getQName().getName(), "revision")) {
+					revision = element;
+				}
+				if (Objects.equals(element.getQName().getName(), "version.api-delayed")) {
+					versionApiDelayed = element;
+				}
+			}
+			if (Objects.isNull(revision) || Objects.isNull(versionApiDelayed)) {
+				System.out.println("\u001B[31m>>>>>>> 请检查parent pom.xml文件中是否有revision和version.api-delayed节点 \u001B[0m");
+				System.exit(1);
+			}
+
+			String tempReversion = revision.getText();
+			String tempVersionApiDelayed = versionApiDelayed.getText();
+
+			Document apiDelayedDocument = POMUtils.getApiDelayedDocument();
+			Element apiProperties = apiDelayedDocument.getRootElement().element("properties");
+			List<Element> apiElements = apiProperties.elements();
+			Element apiRevision = null;
+			for (Element element : apiElements) {
+				if (Objects.equals(element.getQName().getName(), "revision")) {
+					apiRevision = element;
+				}
+			}
+
+			if (Objects.isNull(apiRevision)) {
+				System.out.println("\u001B[31m>>>>>>> 请检查api-delayed pom.xml文件中是否有revision节点 \u001B[0m");
+				System.exit(1);
+			}
+
+			String tempAPiRevision = apiRevision.getText();
+			Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+			if (!Objects.equals(tempReversion, currentBranch + SNAPSHOT_SUFFIX ) || !Objects.equals(tempVersionApiDelayed, currentBranch + SNAPSHOT_SUFFIX) || !Objects.equals(tempAPiRevision, currentBranch + SNAPSHOT_SUFFIX)) {
+				revision.setText(currentBranch + SNAPSHOT_SUFFIX);
+				versionApiDelayed.setText(currentBranch + SNAPSHOT_SUFFIX);
+				POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
+
+				apiRevision.setText(currentBranch + SNAPSHOT_SUFFIX);
+				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
+				firstUpdate = true;
+			}
+
+			List<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME), absolutePathByArtifactId.get(PARENT_PROJECT_NAME));
+			System.out.println("\u001B[32m>>>>>>> start to deploy " + pomFiles.size()
+					+ " projects below sequencelly: >>>>>>>\u001B[0m");
+			pomFiles.forEach(System.out::println);
+			Set<String> installFailureProjects = new HashSet<>();
+			for (String pom : pomFiles) {
+				AtomicBoolean success = new AtomicBoolean(true);
+				deploy(pom.substring(0, pom.lastIndexOf("/pom.xml")), success);
+				if (!success.get()) {
+					installFailureProjects.add(pom);
+				}
+			}
+			System.out.println("\u001B[32m>>>>>>> deploy情况如下: >>>>>>>\u001B[0m");
+			if (installFailureProjects.isEmpty()) {
+				System.out.println(
+						"\u001B[32m>>>>>>> all projects deploy successfully >>>>>>>\u001B[0m");
+			} else {
+				installFailureProjects.forEach(deploy -> System.out.println(
+						"\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
+				System.exit(-1);
+			}
+
+			if (firstUpdate) {
+				System.out.println("\u001B[31m>>>>>>> 已修改版本，是否需要push？\u001B[0m");
+				Scanner scanner = new Scanner(System.in);
+				System.out.print("\u001B[31m输入 'y' push代码，或者输入其他字符结束执行：\u001B[0m");
+				String input = scanner.next();
+				if (!input.equalsIgnoreCase("y")) {
+					System.exit(1);
+				}
+				GitUtils.commitAndPushCode(System.getenv(TARGET_PROJECT_FOLDER), pomFiles, String.format(DEFAULT_COMMIT_MSG, currentBranch + SNAPSHOT_SUFFIX));
+			}
+			System.exit(1);
+		}
 
         if (projects.size() == 1 && PRD_FLAG.equalsIgnoreCase(projects.get(0))) {
 
@@ -107,7 +191,7 @@ public class EasyMavenDeployTool {
 				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
 			}
 
-			System.out.println("\u001B[31m>>>>>>> 已还原版本，是否需要push代码？ \u001B[0m");
+			System.out.println("\u001B[31m>>>>>>> 已还原版本，是否需要push？ \u001B[0m");
 			Scanner scanner = new Scanner(System.in);
 			System.out.print("\u001B[31m输入 'y' push代码，或者输入其他字符结束执行：\u001B[0m");
 			String input = scanner.next();
@@ -174,7 +258,7 @@ public class EasyMavenDeployTool {
 
 			List<String> pomFiles = Lists.newArrayList(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME), absolutePathByArtifactId.get(PARENT_PROJECT_NAME));
 			System.out.println("\u001B[32m>>>>>>> start to install " + pomFiles.size()
-					+ " projects below : >>>>>>>\u001B[0m");
+					+ " projects below sequencelly: >>>>>>>\u001B[0m");
 			pomFiles.forEach(System.out::println);
 			Set<String> installFailureProjects = new HashSet<>();
 			for (String pom : pomFiles) {
@@ -195,7 +279,7 @@ public class EasyMavenDeployTool {
 			}
 
 			if (firstUpdate) {
-				System.out.println("\u001B[31m>>>>>>> 已修改版本，是否需要push代码？\u001B[0m");
+				System.out.println("\u001B[31m>>>>>>> 已修改版本，是否需要push？\u001B[0m");
 				Scanner scanner = new Scanner(System.in);
 				System.out.print("\u001B[31m输入 'y' push代码，或者输入其他字符结束执行：\u001B[0m");
 				String input = scanner.next();
@@ -368,6 +452,25 @@ public class EasyMavenDeployTool {
 		}
 	}
 
+	private static void deploy(String path, AtomicBoolean success) throws IOException, InterruptedException {
+		ProcessBuilder pb = new ProcessBuilder("mvn", "clean", "deploy", "-DskipTests");
+		pb.directory(new File(path));
+		pb.redirectErrorStream(true);
+		Process process = pb.start();
+		InputStream is = process.getInputStream();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			System.out.println(line);
+		}
+		int exitCode = process.waitFor();
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
+		if (exitCode == 0) {
+		} else {
+			success.set(false);
+		}
+	}
+
     /**
      * 模糊匹配项目
      *
@@ -464,8 +567,7 @@ public class EasyMavenDeployTool {
 		List<String> sortedCandidatePomFiles = sortHelpers.stream().sorted(Comparator.comparing(SortHelper::getSort))
 				.map(SortHelper::getName).collect(Collectors.toList());
 
-		System.out.println("\u001B[32m>>>>>>> start to deploy " + sortedCandidatePomFiles.size()
-            + " projects below sequencelly: >>>>>>>\u001B[0m");
+		System.out.println("\u001B[32m>>>>>>> start to deploy " + sortedCandidatePomFiles.size() + " projects below sequencelly: >>>>>>>\u001B[0m");
 		sortedCandidatePomFiles.forEach(System.out::println);
         Set<String> deployFailureProjects = new HashSet<>();
 		sortedCandidatePomFiles.forEach(candidate -> {
@@ -571,6 +673,6 @@ public class EasyMavenDeployTool {
     }
 	private static String removeIllegalChars(String str) {
 		// 去掉 / : " < > | ? *
-		return str.replaceAll("[/:\"><|?*]", "");
+		return str.replaceAll("[/:\"><|?*]", "-");
 	}
 }

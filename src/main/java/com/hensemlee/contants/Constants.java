@@ -27,6 +27,8 @@ public class Constants {
 
     public static final String PRD_FLAG = "PRD";
 
+    public static final String TEST_FLAG = "TEST";
+
     public static final String DEV_FLAG = "DEV";
 
     public static final String CHAT_FLAG = "CHAT";
