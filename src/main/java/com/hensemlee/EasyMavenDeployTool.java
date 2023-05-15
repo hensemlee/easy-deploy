@@ -9,6 +9,7 @@ import com.hensemlee.bean.SortHelper;
 import com.hensemlee.bean.req.EffectiveMavenReq;
 import com.hensemlee.exception.EasyDeployException;
 import com.hensemlee.util.DeployUtils;
+import com.hensemlee.util.GitHubTrendingUtils;
 import com.hensemlee.util.GitUtils;
 import com.hensemlee.util.POMUtils;
 import com.plexpt.chatgpt.ChatGPTStream;
@@ -290,6 +291,10 @@ public class EasyMavenDeployTool {
 			}
 			System.exit(1);
         }
+
+		if (projects.size() == 1 && GIT_TRENDING_FLAG.equalsIgnoreCase(projects.get(0))) {
+			GitHubTrendingUtils.top25();
+		}
 
         if (projects.size() > 0 && CHAT_FLAG.equalsIgnoreCase(projects.get(0))) {
 

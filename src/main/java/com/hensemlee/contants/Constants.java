@@ -31,6 +31,8 @@ public class Constants {
 
     public static final String DEV_FLAG = "DEV";
 
+    public static final String GIT_TRENDING_FLAG = "gt";
+
     public static final String CHAT_FLAG = "CHAT";
 
     public static int INCREMENT = 1;
