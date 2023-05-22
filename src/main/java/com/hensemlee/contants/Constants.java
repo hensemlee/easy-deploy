@@ -54,4 +54,5 @@ public class Constants {
 	public static final String DEFAULT_API_DELAYED_VERSION = "API-DELAYED-LOCAL-1.0.0-SNAPSHOT";
 	public static final String DEFAULT_REVISION = "DAM-LOCAL-1.0.0-SNAPSHOT";
 
+	public static final String DEFAULT_LOCAL_VERSION = "LOCAL-1.0.0-SNAPSHOT";
 }

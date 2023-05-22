@@ -49,7 +49,6 @@ public class EasyMavenDeployTool {
 
     public static void main(String[] args)
         throws IOException, InterruptedException {
-        // 从命令行参数获取要deploy的项目
         if (args.length == 0) {
             System.out.println(
                 "\u001B[32mUsage: easy-deploy fix project_name1 project_name2 ...\u001B[0m");
@@ -71,6 +70,10 @@ public class EasyMavenDeployTool {
                 "\u001B[32mUsage: easy-deploy chat xxxxxxx \u001B[0m");
             System.out.println(
                 "\u001B[32m       (在IDE里开发时，随时可在命令行发起ChatGPT提问&聊天)\u001B[0m");
+			System.out.println(
+					"\u001B[32mUsage: easy-deploy gt \u001B[0m");
+			System.out.println(
+					"\u001B[32m   (命令行即时获取Github Trending日周月榜单)\u001B[0m");
             System.exit(1);
         }
         List<String> projects = Arrays.stream(args).filter(StringUtils::isNotBlank).collect(Collectors.toList());
@@ -183,12 +186,13 @@ public class EasyMavenDeployTool {
 			Element apiRevision = apiProperties.element("revision");
 			String tempAPiRevision = apiRevision.getText();
 			Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
-			if (!Objects.equals(tempReversion, DEFAULT_REVISION ) || !Objects.equals(tempVersionApiDelayed, DEFAULT_API_DELAYED_VERSION) || !Objects.equals(tempAPiRevision, DEFAULT_API_DELAYED_VERSION)) {
-				revision.setText(DEFAULT_REVISION);
-				versionApiDelayed.setText(DEFAULT_API_DELAYED_VERSION);
+			if (!Objects.equals(tempReversion, DEFAULT_LOCAL_VERSION) || !Objects.equals(tempVersionApiDelayed,
+					DEFAULT_LOCAL_VERSION) || !Objects.equals(tempAPiRevision, DEFAULT_LOCAL_VERSION)) {
+				revision.setText(DEFAULT_LOCAL_VERSION);
+				versionApiDelayed.setText(DEFAULT_LOCAL_VERSION);
 				POMUtils.writeDocument(parentDocument, new File(absolutePathByArtifactId.get(PARENT_PROJECT_NAME)));
 
-				apiRevision.setText(DEFAULT_REVISION);
+				apiRevision.setText(DEFAULT_LOCAL_VERSION);
 				POMUtils.writeDocument(apiDelayedDocument, new File(absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME)));
 			}
 
@@ -677,7 +681,7 @@ public class EasyMavenDeployTool {
         }
     }
 	private static String removeIllegalChars(String str) {
-		// 去掉 / : " < > | ? *
+		// 替换 / : " < > | ? *  为 -
 		return str.replaceAll("[/:\"><|?*]", "-");
 	}
 }

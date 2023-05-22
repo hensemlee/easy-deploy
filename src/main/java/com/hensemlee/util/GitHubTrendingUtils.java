@@ -2,6 +2,7 @@ package com.hensemlee.util;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import com.hensemlee.bean.Repository;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -27,7 +28,7 @@ public class GitHubTrendingUtils {
 		System.out.println("\u001B[32m3. monthly\u001B[0m");
 		int range = param.nextInt();
 		if (range != 1 && range != 2 && range != 3) {
-			System.out.println("Invalid range");
+			System.out.println("\u001B[33mInvalid range\u001B[0m");
 			System.exit(-1);
 		}
 		String rangeDate = null;
@@ -123,7 +124,7 @@ public class GitHubTrendingUtils {
 		List<Repository> sortedTop = top.stream().sorted(Comparator.comparing(Repository::getIndex).reversed())
 				.collect(Collectors.toList());
 		for (int i = 0; i < sortedTop.size(); i++) {
-			System.out.println(i + ".【" + rangeDate + " stars: " + sortedTop.get(i).index + "】 " + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + ")");
+			System.out.println(i + ".【" + rangeDate + " stars: " + sortedTop.get(i).getIndex() + "】 " + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + ")");
 		}
 		System.out.println(sortedTop.size() + ". Quit");
 		while (choice != top.size()) {
@@ -133,33 +134,33 @@ public class GitHubTrendingUtils {
 				Scanner select = new Scanner(System.in);
 				if (choice >= 0 && choice <= sortedTop.size()) {
 					if (choice != sortedTop.size()) {
-						System.out.println("You selected Option " + choice);
-						System.out.println("clone it ? [y/n]");
+						System.out.println("\u001B[32mYou selected Option " + choice + "\u001B[0m");
+						System.out.println("\u001B[32mClone it ? [y/n]\u001B[0m");
 						String input = select.nextLine();
 						if (input.equalsIgnoreCase("y")) {
-							System.out.println("please enter your clone dir");
+							System.out.println("\u001B[[32mPlease enter your clone directory\u001B[0m");
 							String dir = select.nextLine();
 							checkDir(dir);
-							System.out.println("please chose https or ssh protocol: [h/s]");
+							System.out.println("\u001B[32mPlease chose https or ssh protocol: [h/s]\u001B[0m");
 							String protocol = select.nextLine();
 							if (protocol.equalsIgnoreCase("h")) {
-								gitClone(dir, sortedTop.get(choice).httpUrl);
+								gitClone(dir, sortedTop.get(choice).getHttpUrl());
 							} else if (protocol.equalsIgnoreCase("s")) {
-								gitClone(dir, sortedTop.get(choice).sshUrl);
+								gitClone(dir, sortedTop.get(choice).getSshUrl());
 							} else {
-								System.out.println("Invalid input, please try again");
+								System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
 							}
 							System.exit(-1);
 						} else {
-							System.out.println("Invalid input");
+							System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
 							System.exit(-1);
 						}
 					} else {
-						System.out.println("Goodbye!");
+						System.out.println("\u001B[32mGoodbye!\u001B[0m");
 						System.exit(-1);
 					}
 				} else {
-					System.out.println("Invalid choice, please try again");
+					System.out.println("\u001B[33mInvalid choice, please try again\u001B[0m");
 				}
 			} catch (Exception e) {
 				System.out.println("error occurred: " + e);
@@ -175,14 +176,14 @@ public class GitHubTrendingUtils {
 		}
 		File directory = new File(dir);
 		if (!directory.exists()) {
-			System.out.println("dir does not exist, create it? [y/n]");
+			System.out.println("\u001B[33mDirectory does not exist, create it? [y/n]\u001B[0m");
 			Scanner select = new Scanner(System.in);
 			String create = select.nextLine();
 			if (create.equalsIgnoreCase("y")) {
 				if (directory.mkdirs()) {
-					System.out.println("Directory created successfully");
+					System.out.println("\u001B[32mDirectory created successfully\u001B[");
 				} else {
-					System.out.println("Failed to create directory");
+					System.out.println("\u001B[31mFailed to create directory\u001B[");
 					System.exit(-1);
 				}
 			}
@@ -225,98 +226,6 @@ public class GitHubTrendingUtils {
 			System.out.println("\u001B[32mclone successfully  \u001B[0m");
 		} else {
 			System.err.println("\u001B[31mclone failure \u001B[0m");
-		}
-	}
-
-	public static class Repository {
-		private String httpUrl;
-		private String sshUrl;
-		private String url;
-
-		private String desc;
-
-		private String language;
-		private int star;
-		private int fork;
-		private int index;
-
-		public String getHttpUrl() {
-			return httpUrl;
-		}
-
-		public Repository setHttpUrl(String httpUrl) {
-			this.httpUrl = httpUrl;
-			return this;
-		}
-
-		public String getSshUrl() {
-			return sshUrl;
-		}
-
-		public Repository setSshUrl(String sshUrl) {
-			this.sshUrl = sshUrl;
-			return this;
-		}
-
-		public String getUrl() {
-			return url;
-		}
-
-		public Repository setUrl(String url) {
-			this.url = url;
-			return this;
-		}
-
-		public String getDesc() {
-			return desc;
-		}
-
-		public Repository setDesc(String desc) {
-			this.desc = desc;
-			return this;
-		}
-
-		public String getLanguage() {
-			return language;
-		}
-
-		public Repository setLanguage(String language) {
-			this.language = language;
-			return this;
-		}
-
-		public int getStar() {
-			return star;
-		}
-
-		public Repository setStar(int star) {
-			this.star = star;
-			return this;
-		}
-
-		public int getFork() {
-			return fork;
-		}
-
-		public Repository setFork(int fork) {
-			this.fork = fork;
-			return this;
-		}
-
-		public int getIndex() {
-			return index;
-		}
-
-		public Repository setIndex(int index) {
-			this.index = index;
-			return this;
-		}
-
-		@Override
-		public String toString() {
-			return "Repository{" + "httpUrl='" + httpUrl + '\'' + ", sshUrl='" + sshUrl + '\'' + ", url='" + url + '\''
-					+ ", desc='" + desc + '\'' + ", language='" + language + '\'' + ", star=" + star + ", fork=" + fork
-					+ ", index=" + index + '}';
 		}
 	}
 }
