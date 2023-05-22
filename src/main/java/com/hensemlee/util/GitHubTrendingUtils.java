@@ -138,7 +138,7 @@ public class GitHubTrendingUtils {
 						System.out.println("\u001B[32mClone it ? [y/n]\u001B[0m");
 						String input = select.nextLine();
 						if (input.equalsIgnoreCase("y")) {
-							System.out.println("\u001B[[32mPlease enter your clone directory\u001B[0m");
+							System.out.println("\u001B[32mPlease enter your clone directory\u001B[0m");
 							String dir = select.nextLine();
 							checkDir(dir);
 							System.out.println("\u001B[32mPlease chose https or ssh protocol: [h/s]\u001B[0m");
@@ -181,9 +181,9 @@ public class GitHubTrendingUtils {
 			String create = select.nextLine();
 			if (create.equalsIgnoreCase("y")) {
 				if (directory.mkdirs()) {
-					System.out.println("\u001B[32mDirectory created successfully\u001B[");
+					System.out.println("\u001B[32mDirectory created successfully\u001B[0m");
 				} else {
-					System.out.println("\u001B[31mFailed to create directory\u001B[");
+					System.out.println("\u001B[31mFailed to create directory\u001B[0m");
 					System.exit(-1);
 				}
 			}
@@ -223,9 +223,9 @@ public class GitHubTrendingUtils {
 		}
 		int exitCode = process.waitFor();
 		if (exitCode == 0) {
-			System.out.println("\u001B[32mclone successfully  \u001B[0m");
+			System.out.println("\u001B[32mClone successfully  \u001B[0m");
 		} else {
-			System.err.println("\u001B[31mclone failure \u001B[0m");
+			System.err.println("\u001B[31mClone failure \u001B[0m");
 		}
 	}
 }
