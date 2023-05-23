@@ -1,8 +1,8 @@
 package com.hensemlee.util;
 
 import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.util.StrUtil;
 import com.hensemlee.bean.Repository;
+import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -16,11 +16,14 @@ public class GitHubTrendingUtils {
 	public static void top25() throws IOException {
 		// daily weekly monthly
 		Scanner param = new Scanner(System.in);
-		System.out.println("\u001B[32mInput your language:\u001B[0m");
+		System.out.println("\u001B[32mInput programming language (press the Enter to skip):\u001B[0m");
 		String lang = param.nextLine();
-		if (StrUtil.isBlank(lang)) {
+		if (Objects.isNull(lang)) {
 			System.out.println("Invalid language");
 			System.exit(-1);
+		}
+		if (StringUtils.isBlank(lang)) {
+			lang = "";
 		}
 		System.out.println("\u001B[32mChose range date:\u001B[0m");
 		System.out.println("\u001B[32m1. daily\u001B[0m");
@@ -124,7 +127,7 @@ public class GitHubTrendingUtils {
 		List<Repository> sortedTop = top.stream().sorted(Comparator.comparing(Repository::getIndex).reversed())
 				.collect(Collectors.toList());
 		for (int i = 0; i < sortedTop.size(); i++) {
-			System.out.println(i + ".【" + rangeDate + " stars: " + sortedTop.get(i).getIndex() + "】 " + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + ")");
+			System.out.println(i + ".【" + rangeDate + " stars: " + sortedTop.get(i).getIndex() + "】 " + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + (StringUtils.isBlank(lang) ? ", language: " + sortedTop.get(i).getLanguage() : "") + ")");
 		}
 		System.out.println(sortedTop.size() + ". Quit");
 		while (choice != top.size()) {
@@ -152,7 +155,7 @@ public class GitHubTrendingUtils {
 							}
 							System.exit(-1);
 						} else {
-							System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
+							System.out.println("\u001B[32mGoodbye!\u001B[0m");
 							System.exit(-1);
 						}
 					} else {
@@ -186,6 +189,9 @@ public class GitHubTrendingUtils {
 					System.out.println("\u001B[31mFailed to create directory\u001B[0m");
 					System.exit(-1);
 				}
+			} else {
+				System.out.println("\u001B[32mGoodbye!\u001B[0m");
+				System.exit(-1);
 			}
 		}
 	}
