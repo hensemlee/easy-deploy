@@ -1,8 +1,5 @@
 package com.hensemlee.util;
 
-import static com.hensemlee.contants.Constants.API_DELAYED_PROJECT_NAME;
-import static com.hensemlee.contants.Constants.PARENT_PROJECT_NAME;
-
 import com.hensemlee.exception.EasyDeployException;
 import java.io.File;
 import java.io.FileWriter;
@@ -15,10 +12,12 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
+import static com.hensemlee.contants.Constants.*;
+
 /**
  * @author hensemlee
  * @owner lijun
- * @team POC
+ * @team Research and Development Efficiency.
  * @since 2023/3/29 19:07
  */
 public class POMUtils {
@@ -123,7 +122,8 @@ public class POMUtils {
     }
 
     public static Document getParentDocument() {
-        Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+		String targetProjectFolder = PathUtils.tryGetCurrentExecutionPath(System.getProperty(CURRENT_PATH));
+		Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects(targetProjectFolder);
         String parentPOM = absolutePathByArtifactId.get(PARENT_PROJECT_NAME);
         File pomFile = new File(parentPOM);
         SAXReader reader = new SAXReader();
@@ -140,7 +140,8 @@ public class POMUtils {
     }
 
 	public static Document getApiDelayedDocument() {
-		Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects();
+		String targetProjectFolder = PathUtils.tryGetCurrentExecutionPath(System.getProperty(CURRENT_PATH));
+		Map<String, String> absolutePathByArtifactId = DeployUtils.findAllMavenProjects(targetProjectFolder);
 		String apiDelayedPom = absolutePathByArtifactId.get(API_DELAYED_PROJECT_NAME);
 		File pomFile = new File(apiDelayedPom);
 		SAXReader reader = new SAXReader();

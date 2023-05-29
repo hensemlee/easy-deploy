@@ -11,7 +11,8 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.hensemlee.contants.Constants.*;
+import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_API_KEY;
+import static com.hensemlee.contants.Constants.JFROG_ARTIFACTORY_QUERY_URL;
 
 /**
  * @author hensemlee
@@ -66,9 +67,9 @@ public class DeployUtils {
 		return ConfigService.getAppConfig();
 	}
 
-	public static Map<String, String> findAllMavenProjects() {
+	public static Map<String, String> findAllMavenProjects(String targetProjectFolder) {
 		Map<String, String> absolutePathByArtifactId = new HashMap<>(64);
-		File rootDir = new File(System.getenv(TARGET_PROJECT_FOLDER));
+		File rootDir = new File(targetProjectFolder);
 		Iterator<File> iterator = Files.fileTraverser().depthFirstPreOrder(rootDir).iterator();
 		while (iterator.hasNext()) {
 			File file = iterator.next();

@@ -3,7 +3,7 @@ package com.hensemlee.contants;
 /**
  * @author hensemlee
  * @owner lijun
- * @team POC
+ * @team Research and Development Efficiency.
  * @since 2023/3/30 14:57
  */
 public class Constants {
@@ -34,6 +34,9 @@ public class Constants {
     public static final String GIT_TRENDING_FLAG = "gt";
 
     public static final String CHAT_FLAG = "CHAT";
+    public static final String UPDATE_FLAG = "UPDATE";
+	
+    public static final String CURRENT_PATH = "currentPath";
 
     public static int INCREMENT = 1;
 

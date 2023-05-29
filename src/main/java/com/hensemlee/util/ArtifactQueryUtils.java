@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jfrog.artifactory.client.aql.AqlItem;
 import org.jfrog.artifactory.client.aql.AqlQueryBuilder;
 
+@Deprecated
 @Slf4j
 public class ArtifactQueryUtils {
 
