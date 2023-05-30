@@ -287,7 +287,7 @@ public class EasyMavenDeployTool {
 			System.exit(1);
 		}
 
-		if (projects.size() == 1 && UPDATE_FLAG.equalsIgnoreCase(projects.get(0))) {
+		if (projects.size() == 1 && UPGRADE_FLAG.equalsIgnoreCase(projects.get(0))) {
 			UpdateUtils.update();
 			System.exit(1);
 		}
