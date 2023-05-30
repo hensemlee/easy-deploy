@@ -135,7 +135,7 @@ public class EasyMavenDeployTool {
 			} else {
 				installFailureProjects.forEach(deploy -> System.out.println(
 						"\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
-				System.exit(-1);
+				System.exit(1);
 			}
 
 			if (firstUpdate) {
@@ -267,7 +267,7 @@ public class EasyMavenDeployTool {
 			} else {
 				installFailureProjects.forEach(deploy -> System.out.println(
 						"\u001B[31m>>>>>>> " + deploy + " install failure !\u001B[0m"));
-				System.exit(-1);
+				System.exit(1);
 			}
 
 			if (firstUpdate) {
@@ -284,10 +284,12 @@ public class EasyMavenDeployTool {
 
 		if (projects.size() == 1 && GIT_TRENDING_FLAG.equalsIgnoreCase(projects.get(0))) {
 			GitHubTrendingUtils.top25();
+			System.exit(1);
 		}
 
 		if (projects.size() == 1 && UPDATE_FLAG.equalsIgnoreCase(projects.get(0))) {
 			UpdateUtils.update();
+			System.exit(1);
 		}
 
         if (projects.size() > 0 && CHAT_FLAG.equalsIgnoreCase(projects.get(0))) {
@@ -454,9 +456,9 @@ public class EasyMavenDeployTool {
 	}
 
 	private static void deploy(String path, AtomicBoolean success, boolean cleanSkip) throws IOException, InterruptedException {
-		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "--offline", "-Dmaven.javadoc.skip=true");
+		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true");
 		if (cleanSkip) {
-			pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "--offline", "-Dmaven.javadoc.skip=true", "-Dmaven.clean.skip=true");
+			pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true", "-Dmaven.clean.skip=true");
 		}
 		pb.directory(new File(path));
 		pb.redirectErrorStream(true);

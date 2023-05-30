@@ -20,7 +20,7 @@ public class GitHubTrendingUtils {
 		String lang = param.nextLine();
 		if (Objects.isNull(lang)) {
 			System.out.println("Invalid language");
-			System.exit(-1);
+			System.exit(1);
 		}
 		if (StringUtils.isBlank(lang)) {
 			lang = "";
@@ -32,7 +32,7 @@ public class GitHubTrendingUtils {
 		int range = param.nextInt();
 		if (range != 1 && range != 2 && range != 3) {
 			System.out.println("\u001B[33mInvalid range\u001B[0m");
-			System.exit(-1);
+			System.exit(1);
 		}
 		String rangeDate = null;
 		if (range == 1) {
@@ -153,21 +153,21 @@ public class GitHubTrendingUtils {
 							} else {
 								System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
 							}
-							System.exit(-1);
+							System.exit(1);
 						} else {
 							System.out.println("\u001B[32mGoodbye!\u001B[0m");
-							System.exit(-1);
+							System.exit(1);
 						}
 					} else {
 						System.out.println("\u001B[32mGoodbye!\u001B[0m");
-						System.exit(-1);
+						System.exit(1);
 					}
 				} else {
 					System.out.println("\u001B[33mInvalid choice, please try again\u001B[0m");
 				}
 			} catch (Exception e) {
 				System.out.println("error occurred: " + e);
-				System.exit(-1);
+				System.exit(1);
 			}
 		}
 
@@ -187,11 +187,11 @@ public class GitHubTrendingUtils {
 					System.out.println("\u001B[32mDirectory created successfully\u001B[0m");
 				} else {
 					System.out.println("\u001B[31mFailed to create directory\u001B[0m");
-					System.exit(-1);
+					System.exit(1);
 				}
 			} else {
 				System.out.println("\u001B[32mGoodbye!\u001B[0m");
-				System.exit(-1);
+				System.exit(1);
 			}
 		}
 	}
