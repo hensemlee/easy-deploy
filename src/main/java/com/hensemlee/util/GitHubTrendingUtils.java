@@ -127,7 +127,7 @@ public class GitHubTrendingUtils {
 		List<Repository> sortedTop = top.stream().sorted(Comparator.comparing(Repository::getIndex).reversed())
 				.collect(Collectors.toList());
 		for (int i = 0; i < sortedTop.size(); i++) {
-			System.out.println(i + ".【" + rangeDate + " stars: " + sortedTop.get(i).getIndex() + "】 " + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + (StringUtils.isBlank(lang) ? ", language: " + sortedTop.get(i).getLanguage() : "") + ")");
+			System.out.println(i + ".【⭐️ " + sortedTop.get(i).getIndex() + " stars " + (getDateIdentification(rangeDate)) + "】" + sortedTop.get(i).getDesc() + " (" + sortedTop.get(i).getHttpUrl() + (StringUtils.isBlank(lang) ? ", language: " + sortedTop.get(i).getLanguage() : "") + ")");
 		}
 		System.out.println(sortedTop.size() + ". Quit");
 		while (choice != top.size()) {
@@ -171,6 +171,19 @@ public class GitHubTrendingUtils {
 			}
 		}
 
+	}
+
+	private static String getDateIdentification(String rangeDate) {
+		if (rangeDate.equals("daily")) {
+			return "today";
+		}
+		if (rangeDate.equals("weekly")) {
+			return "this week";
+		}
+		if (rangeDate.equals("monthly")) {
+			return "this month";
+		}
+		return "";
 	}
 
 	private static void checkDir(String dir) {
