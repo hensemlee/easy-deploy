@@ -400,6 +400,7 @@ public class EasyMavenDeployTool {
             });
             System.exit(1);
         }
+		echoHelp();
     }
 
 	private static void echoHelp() {
@@ -428,16 +429,16 @@ public class EasyMavenDeployTool {
 		System.out.println(
 				"\u001B[32m   (命令行即时获取Github Trending日周月榜单)\u001B[0m");
 		System.out.println(
-				"\u001B[32mUsage: easy-deploy update \u001B[0m");
+				"\u001B[32mUsage: easy-deploy upgrade \u001B[0m");
 		System.out.println(
-				"\u001B[32m   (更新到最新easy-deploy)\u001B[0m");
+				"\u001B[32m   (升级到最新easy-deploy)\u001B[0m");
 		System.exit(1);
 	}
 
 	private static void install(String path, AtomicBoolean success, boolean cleanSkip) throws IOException, InterruptedException {
-		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "install", "-DskipTests", "--offline", "-Dmaven.javadoc.skip=true");
+		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "clean", "install", "-DskipTests", "-Dmaven.javadoc.skip=true");
 		if (cleanSkip) {
-			pb = new ProcessBuilder("mvn", "-T", "1C", "install", "-DskipTests", "--offline", "-Dmaven.javadoc.skip=true", "-Dmaven.clean.skip=true");
+			pb = new ProcessBuilder("mvn", "-T", "1C", "install", "-DskipTests", "-Dmaven.javadoc.skip=true");
 		}
 		pb.directory(new File(path));
 		pb.redirectErrorStream(true);
@@ -456,9 +457,9 @@ public class EasyMavenDeployTool {
 	}
 
 	private static void deploy(String path, AtomicBoolean success, boolean cleanSkip) throws IOException, InterruptedException {
-		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true");
+		ProcessBuilder pb = new ProcessBuilder("mvn", "-T", "1C", "clean", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true");
 		if (cleanSkip) {
-			pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true", "-Dmaven.clean.skip=true");
+			pb = new ProcessBuilder("mvn", "-T", "1C", "deploy", "-DskipTests", "-Dmaven.javadoc.skip=true");
 		}
 		pb.directory(new File(path));
 		pb.redirectErrorStream(true);

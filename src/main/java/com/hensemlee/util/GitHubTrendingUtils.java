@@ -132,7 +132,7 @@ public class GitHubTrendingUtils {
 		System.out.println(sortedTop.size() + ". Quit");
 		while (choice != top.size()) {
 			try {
-				System.out.println("\u001B[32mSelect an option:\u001B[0m");
+				System.out.println("\u001B[32mSelect an option or 按control + c 退出:\u001B[0m");
 				choice = scanner.nextInt();
 				Scanner select = new Scanner(System.in);
 				if (choice >= 0 && choice <= sortedTop.size()) {
@@ -153,7 +153,7 @@ public class GitHubTrendingUtils {
 							} else {
 								System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
 							}
-							System.exit(1);
+//							System.exit(1);
 						} else {
 							System.out.println("\u001B[32mGoodbye!\u001B[0m");
 							System.exit(1);
