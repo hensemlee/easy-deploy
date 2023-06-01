@@ -364,7 +364,7 @@ public class EasyMavenDeployTool {
             projects.forEach(project -> {
                 Set<String> promptSet = new HashSet<>();
                 absolutePathByArtifactId.forEach((k, v) -> {
-                    if (project.startsWith("[") && project.endsWith("]")) {
+                    if (project.startsWith("`") && project.endsWith("`")) {
                         String format = project.substring(1, project.length() - 1);
                         if (k.equals(format)) {
                             candidateProjects.add(k);
@@ -380,7 +380,7 @@ public class EasyMavenDeployTool {
             promotion(prompt);
             candidateProjects.forEach(candidate -> {
 				try {
-					ProcessBuilder processBuilder = new ProcessBuilder("mvn", "-T", "1C", "idea:idea");
+					ProcessBuilder processBuilder = new ProcessBuilder("mvn", "-T", "1C", "clean", "install", "-DskipTests", "-Dmaven.javadoc.skip=true");
 					String path = absolutePathByArtifactId.get(candidate);
 					int index = path.lastIndexOf("/pom.xml");
 					processBuilder.directory(new File(path.substring(0, index)));
