@@ -364,7 +364,7 @@ public class EasyMavenDeployTool {
             projects.forEach(project -> {
                 Set<String> promptSet = new HashSet<>();
                 absolutePathByArtifactId.forEach((k, v) -> {
-                    if (project.startsWith("`") && project.endsWith("`")) {
+                    if (project.startsWith("{") && project.endsWith("}")) {
                         String format = project.substring(1, project.length() - 1);
                         if (k.equals(format)) {
                             candidateProjects.add(k);
