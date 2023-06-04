@@ -1,16 +1,17 @@
 package com.hensemlee.util;
 
 import com.hensemlee.exception.EasyDeployException;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.Element;
+import org.dom4j.io.SAXReader;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Element;
-import org.dom4j.io.SAXReader;
 
 import static com.hensemlee.contants.Constants.*;
 
@@ -109,17 +110,21 @@ public class POMUtils {
         return false;
     }
 
-	public static void writeDocument(Document document, File pomFile) throws IOException {
-        FileWriter fileWriter = null;
-        try {
-            fileWriter = new FileWriter(pomFile);
-            document.write(fileWriter);
-        } finally {
-            if (fileWriter != null) {
-                fileWriter.close();
-            }
-        }
-    }
+	public static void writeDocument(Document document, File pomFile) {
+		try {
+			FileWriter fileWriter = null;
+			try {
+				fileWriter = new FileWriter(pomFile);
+				document.write(fileWriter);
+			} finally {
+				if (fileWriter != null) {
+					fileWriter.close();
+				}
+			}
+		} catch (IOException e) {
+			throw new EasyDeployException(e.getMessage());
+		}
+	}
 
     public static Document getParentDocument() {
 		String targetProjectFolder = PathUtils.tryGetCurrentExecutionPath(System.getProperty(CURRENT_PATH));
