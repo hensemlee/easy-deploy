@@ -29,7 +29,7 @@ public class MavenUtils {
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
-				success.set(false);
+				System.exit(1);
 			}
 		} catch (IOException e) {
 			throw new EasyDeployException(e.getMessage());
@@ -56,7 +56,7 @@ public class MavenUtils {
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
-				success.set(false);
+				System.exit(1);
 			}
 		} catch (IOException e) {
 			throw new EasyDeployException(e.getMessage());

@@ -46,7 +46,7 @@ public class Constants {
 
     public static final String OPENAI_API_KEY = "OPENAI_API_KEY";
 
-    public static final String OPENAI_API_HOST_DEFAULT_VALUE = "https://closeai.deno.dev/";
+    public static final String OPENAI_API_HOST_DEFAULT_VALUE = "https://open.aiproxy.xyz/";
 
     public static final String OPENAI_API_HOST = "OPENAI_API_HOST";
 

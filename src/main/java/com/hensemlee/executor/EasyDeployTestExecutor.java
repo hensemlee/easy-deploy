@@ -78,7 +78,7 @@ public class EasyDeployTestExecutor implements IExecutor {
 		System.out.println("\u001B[32m>>>>>>> start to deploy " + pomFiles.size()
 				+ " projects below sequencelly: >>>>>>>\u001B[0m");
 		pomFiles.forEach(System.out::println);
-		Set<String> installFailureProjects = new HashSet<>();
+		Set<String> deployFailureProjects = new HashSet<>();
 		System.out.println("\u001B[31m>>>>>>> 即将执行mvn deploy, 默认会先执行mvn clean, 是否需要跳过mvn clean？(mvn clean命令可能会导致整个edp test命令执行耗时更长，但可防止一定的问题出现)\u001B[0m");
 		System.out.print("\u001B[31m输入 'y' 跳过执行mvn clean，或者输入其他字符继续执行mvn clean：\u001B[0m");
 		Scanner scanner = new Scanner(System.in);
@@ -91,15 +91,15 @@ public class EasyDeployTestExecutor implements IExecutor {
 			AtomicBoolean success = new AtomicBoolean(true);
 			MavenUtils.deploy(pom.substring(0, pom.lastIndexOf("/pom.xml")), success, cleanSkip);
 			if (!success.get()) {
-				installFailureProjects.add(pom);
+				deployFailureProjects.add(pom);
 			}
 		}
 		System.out.println("\u001B[32m>>>>>>> deploy情况如下: >>>>>>>\u001B[0m");
-		if (installFailureProjects.isEmpty()) {
+		if (deployFailureProjects.isEmpty()) {
 			System.out.println(
 					"\u001B[32m>>>>>>> all projects deploy successfully >>>>>>>\u001B[0m");
 		} else {
-			installFailureProjects.forEach(deploy -> System.out.println(
+			deployFailureProjects.forEach(deploy -> System.out.println(
 					"\u001B[31m>>>>>>> " + deploy + " deploy failure !\u001B[0m"));
 			System.exit(1);
 		}
