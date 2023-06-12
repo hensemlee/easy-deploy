@@ -1,0 +1,4 @@
+/config-cache/
+/.idea/
+/target/
+/dependency-reduced-pom.xml
