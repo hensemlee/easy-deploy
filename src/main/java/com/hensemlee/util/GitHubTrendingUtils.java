@@ -147,9 +147,9 @@ public class GitHubTrendingUtils {
 							System.out.println("\u001B[32mPlease chose https or ssh protocol: [h/s]\u001B[0m");
 							String protocol = select.nextLine();
 							if (protocol.equalsIgnoreCase("h")) {
-								gitClone(dir, sortedTop.get(choice).getHttpUrl());
+								GitUtils.gitClone(dir, sortedTop.get(choice).getHttpUrl());
 							} else if (protocol.equalsIgnoreCase("s")) {
-								gitClone(dir, sortedTop.get(choice).getSshUrl());
+								GitUtils.gitClone(dir, sortedTop.get(choice).getSshUrl());
 							} else {
 								System.out.println("\u001B[33mInvalid input, please try again\u001B[0m");
 							}
@@ -206,45 +206,6 @@ public class GitHubTrendingUtils {
 				System.out.println("\u001B[32mGoodbye!\u001B[0m");
 				System.exit(1);
 			}
-		}
-	}
-
-	public static void gitClone(String dir, String repoAddress)
-			throws IOException, InterruptedException {
-		if (dir.contains("~")) {
-			dir = dir.replace("~", System.getProperty("user.home"));
-		}
-		List<String> commandList = new ArrayList<>();
-		commandList.add("sh");
-		commandList.add("-c");
-		StringBuilder builder = new StringBuilder();
-		builder.append("cd");
-		builder.append(" ");
-		builder.append(dir);
-		builder.append(" ");
-		builder.append("&&");
-		builder.append(" ");
-		builder.append("git clone ");
-		builder.append(repoAddress);
-		commandList.add(builder.toString());
-		String[] commands = commandList.toArray(new String[commandList.size()]);
-		ProcessBuilder processBuilder = new ProcessBuilder()
-				.directory(new File(dir))
-				.command(commands);
-		processBuilder.redirectErrorStream(true);
-		// 启动进程并等待完成
-		Process process = processBuilder.start();
-		InputStream is = process.getInputStream();
-		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-		String line;
-		while ((line = reader.readLine()) != null) {
-			System.out.println(line);
-		}
-		int exitCode = process.waitFor();
-		if (exitCode == 0) {
-			System.out.println("\u001B[32mClone successfully  \u001B[0m");
-		} else {
-			System.err.println("\u001B[31mClone failure \u001B[0m");
 		}
 	}
 }

@@ -29,6 +29,8 @@ public class EasyMavenDeployTool {
 		commands.add(new EasyDeployPrdCommand(new EasyDeployPrdExecutor()));
 		commands.add(new EasyDeployUpgradeCommand(new EasyDeployUpgradeExecutor()));
 		commands.add(new EasyDeployTestCommand(new EasyDeployTestExecutor()));
+		commands.add(new EasyDeployEnforceCommand(new EasyDeployEnforceExecutor()));
+		commands.add(new EasyDeployEnforceInitDataCommand(new EasyDeployEnforceInitDataExecutor()));
     }
 
     public static void main(String[] args) {

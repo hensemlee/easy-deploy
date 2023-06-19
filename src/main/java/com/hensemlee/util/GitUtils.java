@@ -3,10 +3,7 @@ package com.hensemlee.util;
 import com.hensemlee.exception.EasyDeployException;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -117,5 +114,44 @@ public class GitUtils {
 			throw new EasyDeployException(e.getMessage());
 		}
 		return null;
+	}
+
+	public static void gitClone(String dir, String repoAddress)
+			throws IOException, InterruptedException {
+		if (dir.contains("~")) {
+			dir = dir.replace("~", System.getProperty("user.home"));
+		}
+		List<String> commandList = new ArrayList<>();
+		commandList.add("sh");
+		commandList.add("-c");
+		StringBuilder builder = new StringBuilder();
+		builder.append("cd");
+		builder.append(" ");
+		builder.append(dir);
+		builder.append(" ");
+		builder.append("&&");
+		builder.append(" ");
+		builder.append("git clone ");
+		builder.append(repoAddress);
+		commandList.add(builder.toString());
+		String[] commands = commandList.toArray(new String[commandList.size()]);
+		ProcessBuilder processBuilder = new ProcessBuilder()
+				.directory(new File(dir))
+				.command(commands);
+		processBuilder.redirectErrorStream(true);
+		// 启动进程并等待完成
+		Process process = processBuilder.start();
+		InputStream is = process.getInputStream();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+		String line;
+		while ((line = reader.readLine()) != null) {
+			System.out.println(line);
+		}
+		int exitCode = process.waitFor();
+		if (exitCode == 0) {
+			System.out.println("\u001B[32mClone successfully  \u001B[0m");
+		} else {
+			System.err.println("\u001B[31mClone failure \u001B[0m");
+		}
 	}
 }

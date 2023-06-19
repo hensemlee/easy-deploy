@@ -38,6 +38,9 @@ public class Constants {
 	
     public static final String CURRENT_PATH = "currentPath";
 
+	public static final String ENFORCE_FLAG = "enforce";
+	public static final String ENFORCE_INIT_DATA_FLAG = "init";
+
     public static int INCREMENT = 1;
 
     public static final int MAJOR_VERSION_THRESHOLD = 30;
@@ -58,4 +61,8 @@ public class Constants {
 	public static final String DEFAULT_REVISION = "DAM-LOCAL-1.0.0-SNAPSHOT";
 
 	public static final String DEFAULT_LOCAL_VERSION = "LOCAL-1.0.0-SNAPSHOT";
+
+    public static final String CICD_HOST = "https://ops.tezign.com/api/v1/cicd/projects";
+
+    public static final String DEFAULT_REPO_FOLDER_PREFIX = "/cicd/repos/java/";
 }

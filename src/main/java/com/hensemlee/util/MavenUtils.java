@@ -29,6 +29,7 @@ public class MavenUtils {
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
+				success.set(false);
 				System.exit(1);
 			}
 		} catch (IOException e) {
@@ -56,8 +57,29 @@ public class MavenUtils {
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
+				success.set(false);
 				System.exit(1);
 			}
+		} catch (IOException e) {
+			throw new EasyDeployException(e.getMessage());
+		} catch (InterruptedException e) {
+			throw new EasyDeployException(e.getMessage());
+		}
+	}
+
+	public static int generalCommand(String path, String... command) {
+		try {
+			ProcessBuilder pb = new ProcessBuilder(command);
+			pb.directory(new File(path));
+			pb.redirectErrorStream(true);
+			Process process = pb.start();
+			InputStream is = process.getInputStream();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				System.out.println(line);
+			}
+			return process.waitFor();
 		} catch (IOException e) {
 			throw new EasyDeployException(e.getMessage());
 		} catch (InterruptedException e) {
