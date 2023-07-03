@@ -26,6 +26,12 @@ public class MavenUtils {
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
 			}
+			InputStream errorStream = process.getErrorStream();
+			BufferedReader errorReader = new BufferedReader(new InputStreamReader(errorStream));
+			String errorLine;
+			while ((errorLine = errorReader.readLine()) != null) {
+				System.err.println(errorLine);
+			}
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
@@ -54,6 +60,12 @@ public class MavenUtils {
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
 			}
+			InputStream errorStream = process.getErrorStream();
+			BufferedReader errorReader = new BufferedReader(new InputStreamReader(errorStream));
+			String errorLine;
+			while ((errorLine = errorReader.readLine()) != null) {
+				System.err.println(errorLine);
+			}
 			int exitCode = process.waitFor();
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: " + exitCode);
 			if (exitCode != 0) {
@@ -78,6 +90,12 @@ public class MavenUtils {
 			String line;
 			while ((line = reader.readLine()) != null) {
 				System.out.println(line);
+			}
+			InputStream errorStream = process.getErrorStream();
+			BufferedReader errorReader = new BufferedReader(new InputStreamReader(errorStream));
+			String errorLine;
+			while ((errorLine = errorReader.readLine()) != null) {
+				System.err.println(errorLine);
 			}
 			return process.waitFor();
 		} catch (IOException e) {

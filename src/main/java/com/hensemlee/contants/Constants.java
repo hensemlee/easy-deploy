@@ -64,5 +64,5 @@ public class Constants {
 
     public static final String CICD_HOST = "https://ops.tezign.com/api/v1/cicd/projects";
 
-    public static final String DEFAULT_REPO_FOLDER_PREFIX = "/cicd/repos/java/";
+    public static final String DEFAULT_REPO_FOLDER_PREFIX = "/cicd/repos/";
 }

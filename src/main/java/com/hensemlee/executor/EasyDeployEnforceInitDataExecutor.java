@@ -49,21 +49,24 @@ public class EasyDeployEnforceInitDataExecutor implements IExecutor {
 		for (CicdProject project : projects) {
 			try {
 				String coderepo = project.getCoderepo();
-				if (StrUtil.isBlank(coderepo)) {
+				if (StrUtil.isBlank(coderepo) || coderepo.equals("https://git.tezign.com/engineering/dam-sql")) {
 					System.err.println("\u001B[31m " + JSON.toJSONString(project) +" exist null info !\u001B[0m");
 					continue;
 				}
 				String nameWithSuffix = coderepo.substring(coderepo.lastIndexOf("/") + 1, coderepo.length());
-				String pathname = System.getProperty("user.home") + DEFAULT_REPO_FOLDER_PREFIX + project.getBusiness() + "/"
+				String pathname = System.getProperty("user.home") + DEFAULT_REPO_FOLDER_PREFIX
 						+ nameWithSuffix.substring(0, nameWithSuffix.lastIndexOf(".git"));
 				File directory = new File(pathname);
 				if (!directory.exists()) {
-					String targetDir = System.getProperty("user.home") + DEFAULT_REPO_FOLDER_PREFIX + project.getBusiness();
+					String targetDir = System.getProperty("user.home") + DEFAULT_REPO_FOLDER_PREFIX;
 					if (!new File(targetDir).exists()) {
 						new File(targetDir).mkdirs();
 					}
 					System.out.println("\u001B[32mstart to clone " + project.getCoderepo() + " \u001B[0m");
 					GitUtils.gitClone(targetDir, project.getCoderepo());
+					if (project.getCoderepo().equals("https://git.tezign.com/engineering/tezign-intelligence.git")) {
+						System.out.println("================暂停！！！手动修改version!!!");
+					}
 				}
 				System.out.println("\u001B[32m start to init enforce data " + project.getCoderepo() + " \u001B[0m");
 				int exitCode = MavenUtils.generalCommand(Objects.nonNull(project.getContext()) ? pathname + "/" + project.getContext() : pathname,

@@ -81,7 +81,7 @@ public class EasyMavenDeployTool {
 		System.out.println(
 				"\u001B[32measy-deploy enforce project1 project2 ...\u001B[0m");
 		System.out.println(
-				"\u001B[32m增加依赖后，检测依赖冲突的个数是否少于master分支某个时刻记录的个数，不多于则检测通过\u001B[0m");
+				"\u001B[32m(增加依赖后，检测依赖冲突的个数是否少于master分支某个时刻记录的个数，不多于则检测通过)\u001B[0m");
 		System.exit(1);
 	}
 
